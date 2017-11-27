@@ -1,8 +1,12 @@
 #!/usr/bin/env Rscript
 
-#######################################################
-#### Script to run the model on split RNA ###########
-#######################################################
+##############################################################
+#### Script to run the model on pool-and-split RNA ###########
+##############################################################
+
+# The regression and non-regression model is run pool-and-split RNA (Grun et al). 
+# The script takes the number of GRBFs, their scale 
+# parameter and the degrees of freedom as input.
 
 setwd("/nfs/research2/marioni/Nils/BASiCS/")
 
@@ -40,24 +44,23 @@ SpikeInput <- ERCC.num.final[rownames(input.ps)[grepl("ERCC", rownames(input.ps)
 SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
                            "Molecules" = SpikeInput, stringsAsFactors = FALSE)
 
-Data.ps <- newBASiCS_Data(Counts = input.ps, Tech = grepl("ERCC", rownames(input.ps)), SpikeInfo = SpikeInput.1, BatchInfo = chips)
+# Generate Data object
+Data.ps <- newBASiCS_Data(Counts = input.ps, 
+                          Tech = grepl("ERCC", rownames(input.ps)), 
+                          SpikeInfo = SpikeInput.1, BatchInfo = chips)
 
-MCMC.ps <- BASiCS_MCMC(Data = Data.ps, N=40000, Thin = 20, Burn = 20000, prior = "log-normal", Regression = TRUE, k=k, Var=Var, eta=eta)
+# Run the regression model
+MCMC.ps <- BASiCS_MCMC(Data = Data.ps, N=40000, Thin = 20, Burn = 20000, 
+                       Regression = TRUE, k=k, Var=Var, eta=eta)
 
-#saveRDS(MCMC.ps, paste("Tdist/Results/Testing/Gridsearch/MCMC_RNA_", k, "_", Var, "_", eta, ".rds", sep=""))
+saveRDS(MCMC.ps, paste("Tdist/Results/Testing/Datasets/MCMC_RNA_", 
+                       k, "_", Var, "_", eta, "_reg.rds", sep=""))
 
-saveRDS(MCMC.ps, paste("Tdist/Results/Testing/Datasets/MCMC_RNA_", k, "_", Var, "_", eta, "_reg.rds", sep=""))
+# Run the non-regression model
+MCMC.ps.old <- BASiCS_MCMC(Data = Data.ps, N=40000, Thin = 20, Burn = 20000, 
+                           prior = "log-normal")
 
-MCMC.ps.old <- BASiCS_MCMC(Data = Data.ps, N=40000, Thin = 20, Burn = 20000, prior = "log-normal")
-
-saveRDS(MCMC.ps.old, paste("Tdist/Results/Testing/Datasets/MCMC_RNA_old.rds", sep=""))
-
-
-# Do Posterior predictive Checks
-#source("/nfs/research2/marioni/Nils/BASiCS/Tdist/Scripts/PostPredTest.R")
-
-#postpred <- PostPredTest(Data.ps, MCMC.ps, variance=1.2)
-
-#saveRDS(postpred, paste("Tdist/Results/Testing/PostPred_DF/PPC_ps_", eta, ".rds", sep=""))
+saveRDS(MCMC.ps.old, paste("Tdist/Results/Testing/Datasets/MCMC_RNA_old.rds", 
+                           sep=""))
 
 
