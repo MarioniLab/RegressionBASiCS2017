@@ -4,6 +4,11 @@
 #### Script to downsample cells ####
 ####################################
 
+# The regression and non-regression model is run on CA1 pyramidal neurons 
+# from Zeisel et al. 
+# The script takes the number of cells, 
+# a replicate id and a random seed as input.
+
 args = commandArgs(trailingOnly=TRUE)
 
 nocells = as.numeric(args[1])
@@ -14,11 +19,13 @@ library(BASiCS)
 
 setwd("/nfs/research2/marioni/Nils/BASiCS/")
 
+# Read in data
 input <- read.table("Data/Test_Data/CA1_Zeisel.txt", sep = "\t")
 
 set.seed(seed)
 input <- input[,sample(1:ncol(input), nocells)]
 
+# Read in data and calculate absolute number od spike-in molecules
 ERCC.conc <- read.table("Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
 
 ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
@@ -30,15 +37,23 @@ SpikeInput <- ERCC.num.final[rownames(input)[grepl("ERCC", rownames(input))],1]
 SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
                            "Molecules" = SpikeInput, stringsAsFactors = FALSE)
 
-Data <- newBASiCS_Data(Counts = input, Tech = grepl("ERCC", rownames(input)), SpikeInfo = SpikeInput.1)
+# Generate Data object
+Data <- newBASiCS_Data(Counts = input, Tech = grepl("ERCC", rownames(input)), 
+                       SpikeInfo = SpikeInput.1)
 
-MCMC <- BASiCS_MCMC(Data = Data, 40000, 20, 20000, PrintProgress=FALSE, Regression=TRUE, PriorDelta="log-normal")
+# Run the regression model
+MCMC <- BASiCS_MCMC(Data = Data, 40000, 20, 20000, PrintProgress=FALSE, 
+                    Regression=TRUE, PriorDelta="log-normal")
 
-saveRDS(MCMC, paste("Tdist/Results/Testing/Downsampling_Zeisel/", "MCMC_", nocells, "_", iter, ".rds", sep=""))
+saveRDS(MCMC, paste("Tdist/Results/Testing/Downsampling_Zeisel/", "MCMC_", 
+                    nocells, "_", iter, ".rds", sep=""))
 
-#MCMC <- BASiCS_MCMC(Data = Data, 40000, 20, 20000, PrintProgress=FALSE, PriorDelta="log-normal")
+# Run the non-regression model
+MCMC <- BASiCS_MCMC(Data = Data, 40000, 20, 20000, PrintProgress=FALSE, 
+                    PriorDelta="log-normal")
 
-#saveRDS(MCMC, paste("Tdist/Results/Testing/Downsampling_Zeisel_old/", "MCMC_", nocells, "_", iter, ".rds", sep=""))
+saveRDS(MCMC, paste("Tdist/Results/Testing/Downsampling_Zeisel_old/", "MCMC_", 
+                    nocells, "_", iter, ".rds", sep=""))
 
 
 
