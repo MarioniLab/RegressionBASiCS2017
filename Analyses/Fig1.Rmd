@@ -1,0 +1,46 @@
+---
+title: "Fig2_Comparison_oldnew"
+author: "Nils Eling"
+date: "30/08/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Compare old and new version of BASiCS
+
+Here we compare the posterior parameter estimates after running the MCMC with and without regression.
+
+```{r}
+library(BASiCS)
+library(cowplot)
+
+MCMCs <- readRDS("Results/Testing/Tdist/All_datasets.rds")
+
+uncorrected <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
+                             delta = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-5,12)) + xlim(c(-1, 17))
+
+corrected <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
+                             epsilon = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + xlim(c(-1, 17))
+
+uncorrected.fit <- showFit(MCMCs$MCMC_Dict_12_1.2_5_reg.rds) + ylim(c(-5,12)) + xlim(c(-1, 17))
+
+corrected.fit <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
+                             epsilon = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + xlim(c(-1, 17)) +
+  geom_abline(slope = 0, intercept = 0, colour="dark red")
+
+final <- plot_grid(uncorrected, NULL, corrected, NULL, uncorrected.fit, corrected.fit, ncol = 2, nrow = 3, 
+                   align = "vh", labels = "AUTO")
+ggsave(filename = "Manuscript/Figures/Fig1.pdf", plot = final, width = 5, height = 8)
+```

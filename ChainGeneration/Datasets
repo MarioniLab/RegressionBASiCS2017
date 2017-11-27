@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+Scripts/bsub -M 4000 Rscript Scripts/Single_runs/CD4.R 12 1.2 5
+Scripts/bsub -M 4000 Rscript Scripts/Single_runs/Dict.R 12 1.2 5
+Scripts/bsub -M 4000 Rscript Scripts/Single_runs/RNA.R 12 1.2 5
+Scripts/bsub -M 4000 Rscript Scripts/Single_runs/mESC.R 12 1.2 5
+Scripts/bsub -M 4000 Rscript Scripts/Single_runs/Zeisel.R 12 1.2 5

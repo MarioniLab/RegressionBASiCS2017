@@ -1,0 +1,94 @@
+---
+title: "FigS4_FPR_TPR"
+author: "Nils Eling"
+date: "01/09/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# False discovery rate and true positive rate
+
+First we will look at the false positive rate by comparing downsampled datasets from the same cell population - Zeisel data
+
+```{r}
+library(reshape2)
+library(BASiCS)
+library(cowplot)
+
+library(dplyr)
+
+# CD4 T cell data
+DS <- readRDS("Results/Differential_testing/Downsampling_CD4_FPR.rds")
+
+DS.melt <- melt(DS)
+
+DS.melt$NoCells <- factor(rep(c(120, 150, 200, 40, 80), each=30), 
+                          levels = c(40, 80, 120, 150, 200))
+DS.melt$Parameter <- factor(rep(c("mu", "epsilon", "mu old"), 50), 
+                         levels = c("mu", "epsilon", "mu old"))
+DS.melt$mixed <- paste(DS.melt$NoCells, DS.melt$Parameter, sep = "_")
+
+DS.gp <- DS.melt %>% group_by(NoCells, Parameter) %>% summarise(mean = mean(value),
+                                                             lower = quantile(value, 0.25),
+                                                             upper = quantile(value, 0.75))
+
+boxplot.FPR <- ggplot(DS.gp) + 
+  geom_point(aes(NoCells, mean, colour=Parameter), size=3, position=position_dodge(width = 0.5)) + 
+  geom_errorbar(aes(x = NoCells, ymin = lower, ymax = upper, colour=Parameter), width=0.25, position=position_dodge(width = 0.5)) + ylim(c(0,0.6)) +
+  scale_color_manual(values = c("coral3", "forestgreen", "steelblue4")) + ylab("FPR") + 
+  xlab("Number of cells") + theme_minimal(base_size = 16)
+
+# Zeisel data
+
+DS <- readRDS("Results/Differential_testing/Downsampling_Zeisel_FPR.rds")
+
+DS.melt <- melt(DS)
+
+DS.melt$NoCells <- factor(rep(c(120, 150, 200, 300, 40, 80), each=30), 
+                          levels = c(40, 80, 120, 150, 200, 300))
+DS.melt$Parameter <- factor(rep(c("mu", "epsilon", "mu old"), 60), 
+                         levels = c("mu", "epsilon", "mu old"))
+DS.melt$mixed <- paste(DS.melt$NoCells, DS.melt$Parameter, sep = "_")
+
+DS.gp <- DS.melt %>% group_by(NoCells, Parameter) %>% summarise(mean = mean(value),
+                                                             lower = quantile(value, 0.25),
+                                                             upper = quantile(value, 0.75))
+
+boxplot.FPR.Zeisel <- ggplot(DS.gp) + 
+  geom_point(aes(NoCells, mean, colour=Parameter), size=3, position=position_dodge(width = 0.5)) + 
+  geom_errorbar(aes(x = NoCells, ymin = lower, ymax = upper, colour=Parameter), width=0.25, position=position_dodge(width = 0.5)) + ylim(c(0,0.6)) +
+  scale_color_manual(values = c("coral3", "forestgreen", "steelblue4")) + ylab("FPR") + 
+  xlab("Number of cells") + theme_minimal(base_size = 16)
+
+# Dictyostelium data
+
+DS <- readRDS("Results/Differential_testing/Downsampling_Dict_FPR.rds")
+
+DS.melt <- melt(DS)
+
+DS.melt$NoCells <- factor(rep(c(100, 40, 60, 80), each=30), 
+                          levels = c(40, 60, 80, 100))
+DS.melt$Parameter <- factor(rep(c("mu", "epsilon", "mu old"), 40), 
+                         levels = c("mu", "epsilon", "mu old"))
+DS.melt$mixed <- paste(DS.melt$NoCells, DS.melt$Parameter, sep = "_")
+
+DS.gp <- DS.melt %>% group_by(NoCells, Parameter) %>% summarise(mean = mean(value),
+                                                             lower = quantile(value, 0.25),
+                                                             upper = quantile(value, 0.75))
+
+boxplot.FPR.Dict <- ggplot(DS.gp) + 
+  geom_point(aes(NoCells, mean, colour=Parameter), size=3, position=position_dodge(width = 0.5)) + 
+  geom_errorbar(aes(x = NoCells, ymin = lower, ymax = upper, colour=Parameter), width=0.25, position=position_dodge(width = 0.5)) + ylim(c(0,0.6)) +
+  scale_color_manual(values = c("coral3", "forestgreen", "steelblue4")) + ylab("FPR") + 
+  xlab("Number of cells") + theme_minimal(base_size = 16)
+
+
+final <- plot_grid(boxplot.FPR, boxplot.FPR.Zeisel, boxplot.FPR.Dict, ncol = 1, 
+                   labels = "AUTO", align = "h")
+
+ggsave("Manuscript/Figures/FigS3.pdf", final, width = 7, height = 10)
+
+```

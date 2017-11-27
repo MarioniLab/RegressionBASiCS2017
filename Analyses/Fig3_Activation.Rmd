@@ -1,0 +1,259 @@
+---
+title: "Fig3 Activation and ageing"
+author: "Nils Eling"
+date: "03/09/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# CD4$^+$ T cells
+
+This analysis uses MCMC runs on CD4$^+$ T cells in following conditions: naive and activated in young B6, activated in young CAST, activated in old B6.
+
+## Activation of CD4$^+$ T cells
+
+Here we show the advantages of the BASiCS extension for differential variability testing.
+
+```{r}
+# Load libraries and extra data
+library(BASiCS)
+library(cowplot)
+library(gridExtra)
+library(reshape2)
+library(stringr)
+library(pheatmap)
+library(dplyr)
+  
+mouse.genes <- read.table("Data/Genenames.txt", sep = '\t', header = TRUE, stringsAsFactors = FALSE)
+rownames(mouse.genes) <- mouse.genes[,1]
+
+# Load chains
+MCMCs <- readRDS("Results/Differential_testing/All_CD4.rds")
+
+# Exclude lowly expressed genes 
+genes <- (colMedians(MCMCs$YoungNaive@parameters$mu) > 1 &
+            colMedians(MCMCs$YoungActive@parameters$mu) > 1)
+
+# Perform differential testing between naive and activated CD4+ T cells
+
+Test.NaiveActive <- BASiCS_TestDE(Chain1 = MCMCs$YoungActive, Chain2 = MCMCs$YoungNaive, 
+                                  EpsilonM = 1, 
+                                  OffSet = TRUE, GenesSelect = genes, Plot = FALSE, 
+                                  PlotOffset = FALSE)
+
+# Exlude the lowly expressed genes
+Test.NaiveActive$TableResDisp <- Test.NaiveActive$TableResDisp[
+  Test.NaiveActive$TableResDisp$ResultDiffResDisp != "ExcludedByUser",]
+
+Test.NaiveActive$TableMean <- Test.NaiveActive$TableMean[
+  match(Test.NaiveActive$TableResDisp$GeneName, Test.NaiveActive$TableMean$GeneName),]
+```
+
+We can now separate the data into four categories: 
+* up-regulated with decrease in variability
+* up-regulated with increase in variability
+* down-regulated with decrease in variability
+* down-regulated with increase in variability
+
+```{r}
+df <- data.frame(row.names = Test.NaiveActive$TableMean$GeneName,
+                 DistEpsilon = Test.NaiveActive$TableResDisp$ResDispDistance,
+                 Log2FCmu = Test.NaiveActive$TableMean$MeanLog2FC,
+                 Regulation = paste(Test.NaiveActive$TableMean$ResultDiffMean,
+                               Test.NaiveActive$TableResDisp$ResultDiffResDisp, sep = "_"))
+df$Regulation <- ifelse(df$Regulation == "Group1+_Group1+", "Up-regulated, higher variability", 
+                   ifelse(df$Regulation == "Group1+_Group2+", "Up-regulated, lower variability",
+                          ifelse(df$Regulation == "Group2+_Group2+", "Down-regulated, lower variability",
+                                 ifelse(df$Regulation == "Group2+_Group1+", "Down-regulated, higher variability", "Other"))))
+
+fourGroups <- ggplot(df, aes(Log2FCmu, DistEpsilon)) + geom_point(aes(colour=Regulation)) + 
+  xlab("Log2FC mu") + ylab("Distance epsilon") + 
+  scale_colour_manual(values = c("violetred4", "violetred2", "grey90", "seagreen2", "seagreen4"))
+```
+
+A GO analysis will show which regulatory processes are present within the four groups.
+
+```{r}
+# We use the down- or up-regulated genes as background
+write.table(Test.NaiveActive$TableMean$GeneName[Test.NaiveActive$TableMean$ResultDiffMean == "Group1+"],
+            "Results/Differential_testing/CD4T_cells/Upregulated_genes.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(Test.NaiveActive$TableMean$GeneName[Test.NaiveActive$TableMean$ResultDiffMean == "Group2+"],
+            "Results/Differential_testing/CD4T_cells/Downregulated_genes.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(Test.NaiveActive$TableResDisp$GeneName,
+            "Results/Differential_testing/CD4T_cells/All_genes.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(rownames(df)[df$Regulation == "Up-regulated, higher variability"],
+            "Results/Differential_testing/CD4T_cells/CD4_Activation_UpMoreVar.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+cur_df <- df[df$Regulation == "Up-regulated, higher variability",]
+cur_df$Names <- mouse.genes[rownames(cur_df),2]
+write.csv(cur_df[order(cur_df$DistEpsilon, decreasing = TRUE),],
+          "Results/Differential_testing/CD4T_cells/CD4_Activation_UpMoreVar.csv")
+
+write.table(rownames(df)[df$Regulation == "Up-regulated, lower variability"],
+            "Results/Differential_testing/CD4T_cells/CD4_Activation_UpLessVar.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+cur_df <- df[df$Regulation == "Up-regulated, lower variability",]
+cur_df$Names <- mouse.genes[rownames(cur_df),2]
+write.csv(cur_df[order(cur_df$DistEpsilon, decreasing = FALSE),],
+          "Results/Differential_testing/CD4T_cells/CD4_Activation_UpLessVar.csv")
+
+write.table(rownames(df)[df$Regulation == "Down-regulated, higher variability"],
+            "Results/Differential_testing/CD4T_cells/CD4_Activation_DownMoreVar.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+cur_df <- df[df$Regulation == "Down-regulated, higher variability",]
+cur_df$Names <- mouse.genes[rownames(cur_df),2]
+write.csv(cur_df[order(cur_df$DistEpsilon, decreasing = TRUE),],
+          "Results/Differential_testing/CD4T_cells/CD4_Activation_DownMoreVar.csv")
+
+write.table(rownames(df)[df$Regulation == "Down-regulated, lower variability"],
+            "Results/Differential_testing/CD4T_cells/CD4_Activation_DownLessVar.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+cur_df <- df[df$Regulation == "Down-regulated, lower variability",]
+cur_df$Names <- mouse.genes[rownames(cur_df),2]
+write.csv(cur_df[order(cur_df$DistEpsilon, decreasing = FALSE),],
+          "Results/Differential_testing/CD4T_cells/CD4_Activation_DownLessVar.csv")
+```
+
+But we can look at single genes.
+
+We select a few genes to represent the regulatory mechanisms behind CD4+ T cell activation
+
+Visualize single genes
+
+```{r}
+#### Read in data
+# We need to normalize data before plotting
+
+input <- read.table("../Data/Test_Data/CD4_NaiveActiveYoungB6.txt", sep = "\t")
+
+#### Read in Spike-ins
+
+ERCC.conc <- read.table("../Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
+
+ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
+ERCC.num[,1] <- (ERCC.conc[,4]*(10^(-18)))*(6.0221417*(10^23))
+ERCC.num.final <- ERCC.num/50000
+rownames(ERCC.num) <- rownames(ERCC.num.final) <- ERCC.conc[,2]
+
+SpikeInput <- ERCC.num.final[rownames(input)[grepl("ERCC", rownames(input))],1]
+SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
+                           "Molecules" = SpikeInput,
+                           stringsAsFactors = FALSE)
+
+#### Create Data objects for each condition
+
+# Young naive B6
+cur_in <- input[,grepl("SS51_naive", colnames(input)) | grepl("SS52_naive", colnames(input))]
+cur_chips <- sapply(colnames(cur_in), function(n){unlist(strsplit(n, "_"))[1]})
+
+Data.YoungNaiveB6 <- newBASiCS_Data(Counts = cur_in, 
+                                    Tech = grepl("ERCC", rownames(input)), 
+                                    SpikeInfo = SpikeInput.1, 
+                                    BatchInfo = cur_chips)
+
+# Young active B6
+cur_in <- input[,grepl("SS51_active", colnames(input)) | grepl("SS52_active", colnames(input))]
+cur_chips <- sapply(colnames(cur_in), function(n){unlist(strsplit(n, "_"))[1]})
+
+Data.YoungActiveB6 <- newBASiCS_Data(Counts = cur_in, 
+                                    Tech = grepl("ERCC", rownames(input)), 
+                                    SpikeInfo = SpikeInput.1, 
+                                    BatchInfo = cur_chips)
+
+# Offset correction
+OffSet <- function(MCMC1, MCMC2){
+  OS <- median(rowSums(MCMC1@parameters$mu)/rowSums(MCMC2@parameters$mu))
+  OS
+}
+
+OS <- OffSet(MCMCs$YoungNaive, MCMCs$YoungActive)
+
+MCMCs$YoungNaive@parameters$mu <- MCMCs$YoungNaive@parameters$mu / OS
+MCMCs$YoungNaive@parameters$phi <- MCMCs$YoungNaive@parameters$phi * OS
+
+Counts.naive <- BASiCS_DenoisedCounts(Data.YoungNaiveB6, MCMCs$YoungNaive)
+Counts.active <- BASiCS_DenoisedCounts(Data.YoungActiveB6, MCMCs$YoungActive)
+```
+
+Now we can visualize single genes
+
+```{r}
+rownames(Counts.active) <- mouse.genes[rownames(Counts.active),2]
+rownames(Counts.naive) <- mouse.genes[rownames(Counts.naive),2]
+
+genes <- c("Polr2l", "Pes1", "Mapkapk3", "Map3k8", "Ksr1")
+
+df <- data.frame(value = c(as.vector(t(Counts.active[genes,])), as.vector(t(Counts.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
+                                  rep(genes, each = ncol(Counts.naive))), levels = rev(genes)),
+                 Condition = factor(c(rep("Active", length(as.vector(t(Counts.active[genes,])))),
+                                      rep("Naive", length(as.vector(t(Counts.naive[genes,]))))), 
+                                    levels = c("Active", "Naive"))
+                 )
+
+final.lessVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + 
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+
+genes <- c("Fasl", "Smad3",
+  "Pou2f2", "Il2", "Cd274")
+
+df <- data.frame(value = c(as.vector(t(Counts.active[genes,])), as.vector(t(Counts.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
+                                  rep(genes, each = ncol(Counts.naive))), levels = rev(genes)),
+                 Condition = factor(c(rep("Active", length(as.vector(t(Counts.active[genes,])))),
+                                      rep("Naive", length(as.vector(t(Counts.naive[genes,]))))), 
+                                    levels = c("Active", "Naive"))
+                 )
+
+final.moreVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + 
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+```
+
+Now look at genes that increase in variability
+
+```{r}
+genes <- c("Fasl", "Smad3",
+  "Pou2f2", "Il2", "Cd274")
+
+df <- data.frame(value = c(as.vector(t(Counts.active[genes,])), as.vector(t(Counts.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
+                                  rep(genes, each = ncol(Counts.naive))), levels = rev(genes)),
+                 Condition = factor(c(rep("Active", length(as.vector(t(Counts.active[genes,])))),
+                                      rep("Naive", length(as.vector(t(Counts.naive[genes,]))))), 
+                                    levels = c("Active", "Naive"))
+                 )
+
+final.moreVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + 
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+
+# Build the whole figure
+final <- plot_grid(fourGroups, 
+                   plot_grid(final.lessVar,
+                             final.moreVar, 
+                             ncol=2, nrow=1, 
+                             align = "h", labels=c("B", "C")), 
+                   ncol = 1, nrow = 2, labels = c("A", NA))
+
+ggsave("Manuscript/Figures/Fig3.pdf", plot = final, width = 7, height = 10)
+
+```
