@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-Scripts/bsub -M 4000 Rscript Scripts/Single_runs/CD4.R 12 1.2 5
-Scripts/bsub -M 4000 Rscript Scripts/Single_runs/Dict.R 12 1.2 5
-Scripts/bsub -M 4000 Rscript Scripts/Single_runs/RNA.R 12 1.2 5
-Scripts/bsub -M 4000 Rscript Scripts/Single_runs/mESC.R 12 1.2 5
-Scripts/bsub -M 4000 Rscript Scripts/Single_runs/Zeisel.R 12 1.2 5
+# This scripts start multiple job (one per dataset) to run the models with default parameters on a lsf system.
+
+bsub -M 4000 Rscript CD4.R 12 1.2 5
+bsub -M 4000 Rscript Dict.R 12 1.2 5
+bsub -M 4000 Rscript RNA.R 12 1.2 5
+bsub -M 4000 Rscript mESC.R 12 1.2 5
+bsub -M 4000 Rscript Zeisel.R 12 1.2 5
