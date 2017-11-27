@@ -1,7 +1,7 @@
 ---
-title: "Fig2_Comparison_oldnew"
+title: "Residual over-dispersion and over-dispersion estimates"
 author: "Nils Eling"
-date: "30/08/2017"
+date: "27/11/2017"
 output: html_document
 ---
 
@@ -9,30 +9,26 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Compare old and new version of BASiCS
+# Compare residual and over-dispersion and residual over-dispersion parameters
 
-Here we compare the posterior parameter estimates after running the MCMC with and without regression.
+This script recreates Figure 1.
+
+Here we compare the posterior parameter estimates after running the regression model.
+The over-dispersion estimates are confounded by mean expression while residual
+over-dispersion estimates are uncorrelated to $\mu_i$.
 
 ```{r}
+# Read in libraries
 library(BASiCS)
 library(cowplot)
 
+# Load MCMC chains from all datasets
 MCMCs <- readRDS("Results/Testing/Tdist/All_datasets.rds")
 
-uncorrected <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
-                             delta = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$delta))) + 
-  geom_hex(aes(log(mu), log(delta)), bins = 100) +
-  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
-  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-5,12)) + xlim(c(-1, 17))
-
-corrected <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
-                             epsilon = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$epsilon))) + 
-  geom_hex(aes(log(mu), epsilon), bins = 100) +
-  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
-  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + xlim(c(-1, 17))
-
+# Show the uncorrected over-dispersion values plotted against mean expression
 uncorrected.fit <- showFit(MCMCs$MCMC_Dict_12_1.2_5_reg.rds) + ylim(c(-5,12)) + xlim(c(-1, 17))
 
+# Show the corrected residual over-dispersion values plotted against mean expression
 corrected.fit <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
                              epsilon = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$epsilon))) + 
   geom_hex(aes(log(mu), epsilon), bins = 100) +
@@ -40,7 +36,10 @@ corrected.fit <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.
   xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + xlim(c(-1, 17)) +
   geom_abline(slope = 0, intercept = 0, colour="dark red")
 
-final <- plot_grid(uncorrected, NULL, corrected, NULL, uncorrected.fit, corrected.fit, ncol = 2, nrow = 3, 
+# Create final figure
+final <- plot_grid(NULL, NULL, uncorrected.fit, corrected.fit, ncol = 2, nrow = 3, 
                    align = "vh", labels = "AUTO")
+
+# Save final figure
 ggsave(filename = "Manuscript/Figures/Fig1.pdf", plot = final, width = 5, height = 8)
 ```
