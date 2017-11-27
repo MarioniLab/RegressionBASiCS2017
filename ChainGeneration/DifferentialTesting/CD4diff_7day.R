@@ -1,3 +1,7 @@
+# This script runs the regression model on CD4 T cells 7 days after malaria infection.
+# Data was taken from Loennberg et al.
+
+
 library(BASiCS)
 setwd("/nfs/research2/marioni/Nils/BASiCS/")
 
@@ -6,7 +10,6 @@ setwd("/nfs/research2/marioni/Nils/BASiCS/")
 input <- read.table("Data/Test_Data/CD4_diff.txt", sep = "\t")
 
 #### Read in Spike-ins
-
 ERCC.conc <- read.table("Data/Test_Data/ERCC_malaria.txt", header=TRUE, sep = "\t")
 
 ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
@@ -22,10 +25,14 @@ SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
 input <- input[,grepl("7_infect", colnames(input))]
 chips <- sapply(colnames(input), function(n){unlist(strsplit(n, "\\."))[1]})
 
+# Generate data object
 Data.7day <- newBASiCS_Data(Counts = input,
-			    Tech = grepl("ERCC", rownames(input)), SpikeInfo = SpikeInput.1, BatchInfo=chips)
+			    Tech = grepl("ERCC", rownames(input)), SpikeInfo = SpikeInput.1, 
+			    BatchInfo=chips)
 
 
-MCMC.7day <- BASiCS_MCMC(Data.7day, 40000, 20, 20000, Regression = TRUE, k = 12, Var = 1.2, PrintProgress=FALSE)
+# Run the regression model
+MCMC.7day <- BASiCS_MCMC(Data.7day, 40000, 20, 20000, Regression = TRUE,
+                         k = 12, Var = 1.2, PrintProgress=FALSE)
 
 saveRDS(MCMC.7day, "Tdist/Results/Differential_testing/MCMC_CD4diff_7day.rds")

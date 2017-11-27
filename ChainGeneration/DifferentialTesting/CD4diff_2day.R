@@ -1,3 +1,6 @@
+# This script runs the regression model on CD4 T cells 2 days after malaria infection.
+# Data was taken from Loennberg et al.
+
 library(BASiCS)
 setwd("/nfs/research2/marioni/Nils/BASiCS/")
 
@@ -18,7 +21,7 @@ SpikeInput <- ERCC.num.final[rownames(input)[grepl("ERCC", rownames(input))],1]
 SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
                            "Molecules" = SpikeInput, stringsAsFactors = FALSE)
 
-#### Create SummarizedExperiment objects for each condition
+#### Create Data object for each condition
 input <- input[,grepl("2_", colnames(input))]
 chips <- sapply(colnames(input), function(n){unlist(strsplit(n, "\\."))[1]})
 
@@ -26,8 +29,7 @@ Data.2day <- newBASiCS_Data(Counts = input, Tech = grepl("ERCC", rownames(input)
 
 #### Run MCMC on these conditions
 
-# Young naive B6
-
-MCMC.2day <- BASiCS_MCMC(Data.2day, 40000, 20, 20000, Regression = TRUE, k = 12, Var = 1.2, PrintProgress=FALSE)
+MCMC.2day <- BASiCS_MCMC(Data.2day, 40000, 20, 20000, 
+                         Regression = TRUE, k = 12, Var = 1.2, PrintProgress=FALSE)
 
 saveRDS(MCMC.2day, "Tdist/Results/Differential_testing/MCMC_CD4diff_2day.rds")
