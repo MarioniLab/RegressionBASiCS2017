@@ -1,5 +1,9 @@
 #!/usr/bin/env Rscript
 
+# This file reads in all MCMC chain objects from subsetted CA1 pyramidal neurons
+# and extracts mu, delta and epsilon parameters. MCMC chains were generated 
+# using the regression approach.
+
 library(BASiCS)
 
 setwd("/nfs/research2/marioni/Nils/BASiCS/Tdist/Results/Testing/")
