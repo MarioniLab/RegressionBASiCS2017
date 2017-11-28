@@ -60,6 +60,7 @@ counter <- 1
 lower <- quantile(log(mu_real), 0.33)
 higher <- quantile(log(mu_real), 0.66)
 
+# We collect the median and the central 50% quantile
 for(i in seq(1,213, 3)){
   cur_mu_new <- log(Data.new[,i])
   cur_mu_old <- log(Data.old[,idx])
@@ -118,6 +119,7 @@ counter <- 1
 lower <- quantile(log(mu_real), 0.33)
 higher <- quantile(log(mu_real), 0.66)
 
+# We collect the median and the central 50% quantile
 for(i in seq(2,213, 3)){
   cur_delta_new <- log(Data.new[,i])
   cur_delta_old <- log(Data.old[,idx])
@@ -154,8 +156,8 @@ df.delta.df <- df.delta.df[which(!is.na(df.delta.df[,1])),]
 
 df.summary <- ddply(df.delta.df, c("NoCells", "OldNew", "LowHigh"), summarise,
                     Med = median(Median),
-                    Lower = quantile(Median, 0.025),
-                    Upper = quantile(Median, 0.975))
+                    Lower = quantile(Median, 0),
+                    Upper = quantile(Median, 1))
 
 boxplot.delta <- ggplot(df.summary) + 
   geom_point(aes(NoCells, Med, colour=OldNew), size=2, position=position_dodge(width = 0.5)) + 
@@ -212,8 +214,8 @@ df.cors.mu$LowHigh <- factor(rep(c("Low", "Low", "Medium", "Medium", "High", "Hi
 
 df.summary <- ddply(df.cors.mu, c("NoCells", "OldNew", "LowHigh"), summarise,
                     Med = median(Correlation),
-                    Lower = quantile(Correlation, 0.025),
-                    Upper = quantile(Correlation, 0.975))
+                    Lower = quantile(Correlation, 0),
+                    Upper = quantile(Correlation, 1))
 
 df.summary$OldNew <- factor(df.summary$OldNew, levels=c("Old", "New"))
 df.summary$LowHigh <- factor(df.summary$LowHigh, levels=c("High", "Medium", "Low"))
@@ -273,8 +275,8 @@ df.cors.delta$LowHigh <- factor(rep(c("Low", "Low", "Medium", "Medium", "High", 
 
 df.summary <- ddply(df.cors.delta, c("NoCells", "OldNew", "LowHigh"), summarise,
                     Med = median(Correlation),
-                    Lower = quantile(Correlation, 0.025),
-                    Upper = quantile(Correlation, 0.975))
+                    Lower = quantile(Correlation, 0),
+                    Upper = quantile(Correlation, 1))
 
 df.summary$OldNew <- factor(df.summary$OldNew, levels=c("Old", "New"))
 df.summary$LowHigh <- factor(df.summary$LowHigh, levels=c("High", "Medium", "Low"))
@@ -294,6 +296,7 @@ df.epsilon <- matrix(data=NA, ncol = 3, nrow = 8*30)
 colnames(df.epsilon) <- c("Median", "Lower", "Upper")
 counter <- 1
 
+# We collect the median and the central 50% quantile
 for(i in seq(3,213, 3)){
   cur_epsilon <- Data.new[,i]
   
@@ -320,8 +323,8 @@ df.epsilon.df <- df.epsilon.df[which(!is.na(df.epsilon.df[,1])),]
 
 df.summary <- ddply(df.epsilon.df, c("NoCells", "LowHigh"), summarise,
                     Med = median(Median),
-                    Lower = quantile(Median, 0.025),
-                    Upper = quantile(Median, 0.975))
+                    Lower = quantile(Median, 0),
+                    Upper = quantile(Median, 1))
 
 boxplot.epsilon <- ggplot(df.summary) + 
   geom_point(aes(NoCells, Med), colour="coral3", size=2, position=position_dodge(width = 0.5)) + 

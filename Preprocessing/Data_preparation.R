@@ -116,10 +116,8 @@ ggplot(data.frame(PC1=pca$x[,1], PC2=pca$x[,2],
                   batch=sapply(colnames(input.Dict.bio), function(n){substr(n, 4,4)}))) +
   geom_point(aes(x=PC1, y=PC2, colour=day, shape=batch))
 
-# Batch 3 appears to cluster separatlety - remove this one
-input.Dict.bio <- input.Dict.bio[,!(grepl("X0h3", colnames(input.Dict.bio)) | 
-                                      grepl("X3h3", colnames(input.Dict.bio)) | 
-                                      grepl("X6h3", colnames(input.Dict.bio)))]
+# Batch 3 appears to cluster separatlety 
+# BASiCS will capture this batch effect with the parameter theta
 
 # Filtering on biological and technical genes
 input.Dict.bio <- input.Dict.bio[rowMeans(input.Dict.bio) > 1,]
