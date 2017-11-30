@@ -17,6 +17,8 @@ CA1 pyramidal neuron cells were subsetted to 50-500 cells and the regression
 as well as non-regression model were used to estimate parameters. 
 These parameters are stored in .txt files. 
 Parameters estimated on 939 cells is used as pseudo ground truth for comparison.
+We quantify the difference between estimates and the pseudo ground truth in form
+of log2 fold changes (for $\delta_i$ and $\mu_i$) and absolute distances (for $\epsilon_i$)
 
 We will first look at the values for $\mu_i$
 
@@ -40,7 +42,7 @@ Offset <- function(mu_real, mu_sim){
   return(mu_sim)
 }
 
-# Ground truth parameters
+# Pseudo ground truth for mu
 mu_real <- Data.old$MCMC_939_1.rds_mu
 
 Data.new[,seq(1,213, 3)] <- apply(Data.new[,seq(1,213, 3)], 2, function(n){
@@ -51,8 +53,8 @@ Data.old[,seq(1,142, 2)] <- apply(Data.old[,seq(1,142, 2)], 2, function(n){
 })
 
 # Split genes into lowly, medium and highly expressing for new and old model
-df.mu <- matrix(data=NA, ncol = 3, nrow = 8*30*2)
-colnames(df.mu) <- c("Median", "Lower", "Upper")
+df.mu <- matrix(data=NA, ncol = 1, nrow = 8*30*2)
+colnames(df.mu) <- c("Median")
 idx <- 1
 counter <- 1
 
@@ -62,24 +64,26 @@ higher <- quantile(log(mu_real), 0.66)
 
 # We collect the median and the central 50% quantile
 for(i in seq(1,213, 3)){
-  cur_mu_new <- log(Data.new[,i])
-  cur_mu_old <- log(Data.old[,idx])
+  cur_mu_new <- Data.new[,i]
+  cur_mu_old <- Data.old[,idx]
   
-  df.mu[counter,1] <- median(cur_mu_old[log(mu_real) < lower])
-  df.mu[counter+1,1] <- median(cur_mu_old[log(mu_real) > lower & log(mu_real) < higher])
-  df.mu[counter+2,1] <- median(cur_mu_old[log(mu_real) > higher])
+  df.mu[counter,1] <- median(log2(cur_mu_old[log(mu_real) < lower] / 
+                                    mu_real[log(mu_real) < lower]))
   
-  df.mu[counter+3,1] <- median(cur_mu_new[log(mu_real) < lower])
-  df.mu[counter+4,1] <- median(cur_mu_new[log(mu_real) > lower & log(mu_real) < higher])
-  df.mu[counter+5,1] <- median(cur_mu_new[log(mu_real) > higher])
+  df.mu[counter+1,1] <- median(log2(cur_mu_old[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      mu_real[log(mu_real) > lower & log(mu_real) < higher]))
   
-  df.mu[counter,2:3] <- quantile(cur_mu_old[log(mu_real) < lower], c(0.25,0.75))
-  df.mu[counter+1,2:3] <- quantile(cur_mu_old[log(mu_real) > lower & log(mu_real) < higher], c(0.25,0.75))
-  df.mu[counter+2,2:3] <- quantile(cur_mu_old[log(mu_real) > higher], c(0.25,0.75))
+  df.mu[counter+2,1] <- median(log2(cur_mu_old[log(mu_real) > higher] / 
+                               mu_real[log(mu_real) > higher]))
   
-  df.mu[counter+3,2:3] <- quantile(cur_mu_new[log(mu_real) < lower], c(0.25,0.75))
-  df.mu[counter+4,2:3] <- quantile(cur_mu_new[log(mu_real) > lower & log(mu_real) < higher], c(0.25,0.75))
-  df.mu[counter+5,2:3] <- quantile(cur_mu_new[log(mu_real) > higher], c(0.25,0.75))
+  df.mu[counter+3,1] <- median(log2(cur_mu_new[log(mu_real) < lower] / 
+                                    mu_real[log(mu_real) < lower]))
+  
+  df.mu[counter+4,1] <- median(log2(cur_mu_new[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      mu_real[log(mu_real) > lower & log(mu_real) < higher]))
+  
+  df.mu[counter+5,1] <- median(log2(cur_mu_new[log(mu_real) > higher] / 
+                               mu_real[log(mu_real) > higher]))
   counter <- counter+6
   idx = idx+2
 }
@@ -97,48 +101,54 @@ df.mu.df <- df.mu.df[which(!is.na(df.mu.df[,1])),]
 
 df.summary <- ddply(df.mu.df, c("NoCells", "OldNew", "LowHigh"), summarise,
                     Med = median(Median),
-                    Lower = quantile(Median, 0.25),
-                    Upper = quantile(Median, 0.75))
+                    Lower = min(Median),
+                    Upper = max(Median))
 
 boxplot.mu <- ggplot(df.summary) + 
   geom_point(aes(NoCells, Med, colour=OldNew), size=2, position=position_dodge(width = 0.5)) + 
-  geom_errorbar(aes(x = NoCells, ymin = Lower, ymax = Upper, colour=OldNew), width=0.25, position=position_dodge(width = 0.5)) +
+  geom_errorbar(aes(x = NoCells, ymin = Lower, ymax = Upper, colour=OldNew), width=0.25, position=position_dodge(width = 0.5)) + ylim(c(-0.3,0.3)) + 
   scale_color_manual(values = c("steelblue4", "coral3")) + ylab("log(mu)") + 
   xlab("Number of cells") + facet_grid(LowHigh~.)
 ```
 
-Now we plot the values ofr $\delta_i$.
+Now we plot the values for $\delta_i$.
 
 ```{r}
 # Split genes into lowly, medium and highly expressing for new and old model
-df.delta <- matrix(data=NA, ncol = 3, nrow = 8*30*2)
-colnames(df.delta) <- c("Median", "Lower", "Upper")
+df.delta <- matrix(data=NA, ncol = 1, nrow = 8*30*2)
+colnames(df.delta) <- c("Median")
 idx <- 2
 counter <- 1
 
+# Pseudo ground truth for delta
+delta_real <- Data.old$MCMC_939_1.rds_delta
+
+# We split the genes at the 33% and 66% quantile
 lower <- quantile(log(mu_real), 0.33)
 higher <- quantile(log(mu_real), 0.66)
 
 # We collect the median and the central 50% quantile
 for(i in seq(2,213, 3)){
-  cur_delta_new <- log(Data.new[,i])
-  cur_delta_old <- log(Data.old[,idx])
+  cur_delta_new <- Data.new[,i]
+  cur_delta_old <- Data.old[,idx]
   
-  df.delta[counter,1] <- median(cur_delta_old[log(mu_real) < lower])
-  df.delta[counter+1,1] <- median(cur_delta_old[log(mu_real) > lower & log(mu_real) < higher])
-  df.delta[counter+2,1] <- median(cur_delta_old[log(mu_real) > higher])
+  df.delta[counter,1] <- median(log2(cur_delta_old[log(mu_real) < lower] / 
+                                    delta_real[log(mu_real) < lower]))
   
-  df.delta[counter+3,1] <- median(cur_delta_new[log(mu_real) < lower])
-  df.delta[counter+4,1] <- median(cur_delta_new[log(mu_real) > lower & log(mu_real) < higher])
-  df.delta[counter+5,1] <- median(cur_delta_new[log(mu_real) > higher])
+  df.delta[counter+1,1] <- median(log2(cur_delta_old[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      delta_real[log(mu_real) > lower & log(mu_real) < higher]))
   
-  df.delta[counter,2:3] <- quantile(cur_delta_old[log(mu_real) < lower], c(0.25,0.75))
-  df.delta[counter+1,2:3] <- quantile(cur_delta_old[log(mu_real) > lower & log(mu_real) < higher], c(0.25,0.75))
-  df.delta[counter+2,2:3] <- quantile(cur_delta_old[log(mu_real) > higher], c(0.25,0.75))
+  df.delta[counter+2,1] <- median(log2(cur_delta_old[log(mu_real) > higher] / 
+                               delta_real[log(mu_real) > higher]))
   
-  df.delta[counter+3,2:3] <- quantile(cur_delta_new[log(mu_real) < lower], c(0.25,0.75))
-  df.delta[counter+4,2:3] <- quantile(cur_delta_new[log(mu_real) > lower & log(mu_real) < higher], c(0.25,0.75))
-  df.delta[counter+5,2:3] <- quantile(cur_delta_new[log(mu_real) > higher], c(0.25,0.75))
+  df.delta[counter+3,1] <- median(log2(cur_delta_new[log(mu_real) < lower] / 
+                                    delta_real[log(mu_real) < lower]))
+  
+  df.delta[counter+4,1] <- median(log2(cur_delta_new[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      delta_real[log(mu_real) > lower & log(mu_real) < higher]))
+  
+  df.delta[counter+5,1] <- median(log2(cur_delta_new[log(mu_real) > higher] / 
+                               delta_real[log(mu_real) > higher]))
   counter <- counter+6
   idx = idx+2
 }
@@ -156,12 +166,12 @@ df.delta.df <- df.delta.df[which(!is.na(df.delta.df[,1])),]
 
 df.summary <- ddply(df.delta.df, c("NoCells", "OldNew", "LowHigh"), summarise,
                     Med = median(Median),
-                    Lower = quantile(Median, 0),
-                    Upper = quantile(Median, 1))
+                    Lower = min(Median),
+                    Upper = max(Median))
 
 boxplot.delta <- ggplot(df.summary) + 
   geom_point(aes(NoCells, Med, colour=OldNew), size=2, position=position_dodge(width = 0.5)) + 
-  geom_errorbar(aes(x = NoCells, ymin = Lower, ymax = Upper, colour=OldNew), width=0.25, position=position_dodge(width = 0.5)) +
+  geom_errorbar(aes(x = NoCells, ymin = Lower, ymax = Upper, colour=OldNew), width=0.25, position=position_dodge(width = 0.5))  + 
   scale_color_manual(values = c("steelblue4", "coral3")) + ylab("log(delta)") + 
   xlab("Number of cells") + facet_grid(LowHigh~.)
 ```
@@ -292,22 +302,23 @@ Now look at the values for $\epsilon_i$.
 
 ```{r}
 mu_real <- Data.old$MCMC_939_1.rds_mu
-df.epsilon <- matrix(data=NA, ncol = 3, nrow = 8*30)
-colnames(df.epsilon) <- c("Median", "Lower", "Upper")
+epsilon_real <- Data.new$MCMC_939_1.rds_epsilon
+df.epsilon <- matrix(data=NA, ncol = 1, nrow = 8*30)
+colnames(df.epsilon) <- c("Median")
 counter <- 1
 
 # We collect the median and the central 50% quantile
 for(i in seq(3,213, 3)){
   cur_epsilon <- Data.new[,i]
   
-  df.epsilon[counter,1] <- median(cur_epsilon[log(mu_real) < lower], na.rm = TRUE)
-  df.epsilon[counter+1,1] <- median(cur_epsilon[log(mu_real) > lower & log(mu_real) < higher], na.rm = TRUE)
-  df.epsilon[counter+2,1] <- median(cur_epsilon[log(mu_real) > higher], na.rm = TRUE)
+  df.epsilon[counter,1] <- median(cur_epsilon[log(mu_real) < lower] - 
+                                    epsilon_real[log(mu_real) < lower], na.rm = TRUE)
   
-  df.epsilon[counter,2:3] <- quantile(cur_epsilon[log(mu_real) < lower], c(0.25,0.75),na.rm = TRUE)
-  df.epsilon[counter+1,2:3] <- quantile(cur_epsilon[log(mu_real) > lower & log(mu_real) < higher], 
-                                        c(0.25,0.75),na.rm = TRUE)
-  df.epsilon[counter+2,2:3] <- quantile(cur_epsilon[log(mu_real) > higher], c(0.25,0.75), na.rm = TRUE)
+  df.epsilon[counter+1,1] <- median(cur_epsilon[log(mu_real) > lower & log(mu_real) < higher] -
+                                     epsilon_real[log(mu_real) > lower & log(mu_real) < higher], na.rm = TRUE)
+  
+  df.epsilon[counter+2,1] <- median(cur_epsilon[log(mu_real) > higher] -
+                                      epsilon_real[log(mu_real) > higher], na.rm = TRUE)
   
   counter <- counter+3
 }
@@ -323,13 +334,13 @@ df.epsilon.df <- df.epsilon.df[which(!is.na(df.epsilon.df[,1])),]
 
 df.summary <- ddply(df.epsilon.df, c("NoCells", "LowHigh"), summarise,
                     Med = median(Median),
-                    Lower = quantile(Median, 0),
-                    Upper = quantile(Median, 1))
+                    Lower = min(Median),
+                    Upper = max(Median))
 
 boxplot.epsilon <- ggplot(df.summary) + 
   geom_point(aes(NoCells, Med), colour="coral3", size=2, position=position_dodge(width = 0.5)) + 
-  geom_errorbar(aes(x = NoCells, ymin = Lower, ymax = Upper), colour="coral3", width=0.25, position=position_dodge(width = 0.5)) + ylab("log(mu)") + ylim(c(-0.5,0.5)) +
-  xlab("Number of cells") + facet_grid(LowHigh~.)
+  geom_errorbar(aes(x = NoCells, ymin = Lower, ymax = Upper), colour="coral3", width=0.25, position=position_dodge(width = 0.5)) + ylab("log(mu)") + ylim(c(-0.15,0.15)) + 
+  xlab("Number of cells") + facet_grid(LowHigh~.) 
 
 # Create final figures and save
 final.main <- plot_grid(boxplot.mu, boxplot.delta, boxplot.epsilon, ncol = 3, nrow = 1, align = "h", labels = "AUTO")
