@@ -5,6 +5,12 @@
 setwd("/Users/eling01/Google Drive/BASiCS_add-on/")
 
 #### CD4 T cell dataset ####
+
+# Downloaded from:
+# https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/
+
+# Batch names: SS51 = B6 young 1, SS52 = B6 young 2
+
 # Read in the data from Martinez et al.
 input <- read.table("Data/Raw_data/CD4/QC_B6_CAST_all.txt", header = TRUE, sep = "\t")
 
@@ -21,6 +27,7 @@ write.table(rbind(g.bio, ERCC), "Data/Test_Data/CD4_NaiveActiveYoungB6.txt", sep
 
 #### Mouse brain cells data ####
 # Data from Zeisel et al.
+# Downloaded from: http://linnarssonlab.org/cortex/
 
 # Raw counts
 Zeisel.bio <- read.table("Data/Raw_data/Zeisel/Zeisel_data.txt", sep = "\t")
@@ -59,6 +66,9 @@ ERCC <- Zeisel.ERCC[,colnames(CA1)]
 write.table(rbind(CA1, ERCC), "Data/Test_Data/CA1_Zeisel.txt", sep = "\t")
 
 #### Pool and split data ####
+
+# Downloaded from: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE54695
+
 # Data from Gruen et al.
 input <- read.table("Data/Raw_data/PoolSplit/GSE54695_data_transcript_counts.txt", sep = "\t", header = TRUE)
 rownames(input) <- input$GENENAME
@@ -97,6 +107,9 @@ colnames(Data) <- paste(sapply(colnames(Data), function(n){unlist(strsplit(n, "_
 write.table(Data, "Data/Test_Data/PoolSplit.txt", sep = '\t')
 
 #### Dictyostelium data ####
+
+# Downloaded from: http://www.cell.com/action/showMethods?pii=S0960-9822%2817%2930564-X
+
 # Data from Antolović et al.
 input.Dict <- read.csv("Data/Raw_data/Chubb/mmc2.csv", header = TRUE, skip = 2)
 rownames(input.Dict) <- input.Dict[,1]
@@ -126,6 +139,10 @@ ERCC <- ERCC[rowMeans(ERCC) > 0, colnames(input.Dict.bio)]
 write.table(rbind(input.Dict.bio, ERCC), "Data/Test_Data/Dictyostelium.txt", sep = "\t")
 
 #### CD4 T cell differentiation ####
+
+# Data downlodaed from: https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4388/
+# And mapped against mouse genome using gsnap
+
 # Data from Loennberg et al.
 input <- read.table("Data/Raw_data/CD4_Diff/Tcell_all.txt", sep = "\t", header = TRUE)
 colnames(input) <- sapply(colnames(input), function(n){unlist(strsplit(n, "\\."))[1]})
