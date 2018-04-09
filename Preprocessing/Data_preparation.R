@@ -2,20 +2,29 @@
 #### Script to preprocess datasets used in this study ####
 ##########################################################
 
-setwd("/Users/eling01/Google Drive/BASiCS_add-on/")
+setwd("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/")
+library(data.table)
 
 #### CD4 T cell dataset ####
 
 # Downloaded from:
 # https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-4888/
 
-# Batch names: SS51 = B6 young 1, SS52 = B6 young 2
+# Read in the data from Martinez et al. - E-MTAB-4888.processed.2.zip
+input <- read.table("Data/Raw_data/CD4/raw_data.txt", header = TRUE, sep = "\t")
 
-# Read in the data from Martinez et al.
-input <- read.table("Data/Raw_data/CD4/QC_B6_CAST_all.txt", header = TRUE, sep = "\t")
+# Metadata file - E-MTAB-4888.additional.1.zip
+meta <- read.table("Data/Raw_data/CD4/metadata_file.txt", header = TRUE, sep = "\t",
+                   stringsAsFactors = FALSE)
 
 # Select young B6 cells
-input.CD4 <- input[,which(grepl("SS51", colnames(input)) | grepl("SS52", colnames(input)))]
+input.CD4 <- input[,meta$X[meta$Individuals == "B6 young 1" |
+                             meta$Individuals == "B6 young 2"]]
+meta <- meta[meta$Individuals == "B6 young 1" |
+               meta$Individuals == "B6 young 2",] 
+
+# Rename columns
+colnames(input) <- paste(meta$Individuals, meta$Stimulus, rownames(meta), sep = " ")
 
 # Filtering of bological and technical genes
 g.bio <- input.CD4[grepl("ENS", rownames(input.CD4)),]
@@ -30,24 +39,29 @@ write.table(rbind(g.bio, ERCC), "Data/Test_Data/CD4_NaiveActiveYoungB6.txt", sep
 # Downloaded from: http://linnarssonlab.org/cortex/
 
 # Raw counts
-Zeisel.bio <- read.table("Data/Raw_data/Zeisel/Zeisel_data.txt", sep = "\t")
-rownames(Zeisel.bio) <- Zeisel.bio[,1]
-Zeisel.bio <- Zeisel.bio[,-c(1,2)]
+Zeisel <- read.table("Data/Raw_data/Zeisel/expression_mRNA_17-Aug-2014.txt", 
+                    header = FALSE, sep = "\t", stringsAsFactors = FALSE, 
+                    fill = TRUE)
 
 # Meta information
-Zeisel.meta <- read.table("Data/Raw_data/Zeisel/Zeisel_meta.txt", sep = "\t", stringsAsFactors = FALSE)
-rownames(Zeisel.meta) <- Zeisel.meta$V1
-Zeisel.meta <- Zeisel.meta[,-1]
+Zeisel.meta <- Zeisel[1:11,]
+Zeisel.meta <- Zeisel.meta[,-c(1,2)]
+
+# Collect biological counts
+Zeisel.bio <- Zeisel[12:nrow(Zeisel),]
+rownames(Zeisel.bio) <- as.character(Zeisel.bio[,1])
+Zeisel.bio <- Zeisel.bio[,-c(1,2)]
+colnames(Zeisel.bio) <- as.character(Zeisel.meta[8,])
+Zeisel.bio <- data.matrix(Zeisel.bio[rowMeans(data.matrix(Zeisel.bio)) > 0.1,])
 
 # Spike-in counts
-Zeisel.ERCC <- read.table("Data/Raw_data/Zeisel/Zeisel_ERCC.txt", sep = "\t")
-rownames(Zeisel.ERCC) <- Zeisel.ERCC[,1]
+Zeisel.ERCC <- read.table("Data/Raw_data/Zeisel/expression_spikes_17-Aug-2014.txt", 
+                          header = FALSE, sep = "\t", stringsAsFactors = FALSE, 
+                          fill = TRUE)
+Zeisel.ERCC <- Zeisel.ERCC[12:nrow(Zeisel.ERCC),]
+rownames(Zeisel.ERCC) <- as.character(Zeisel.ERCC[,1])
 Zeisel.ERCC <- Zeisel.ERCC[,-c(1,2)]
-
-# Filter biological and technical genes
-Zeisel.bio <- Zeisel.bio[rowMeans(Zeisel.bio) > 0.1,]
-colnames(Zeisel.bio) <- Zeisel.meta[8,]
-colnames(Zeisel.ERCC) <- Zeisel.meta[8,]
+colnames(Zeisel.ERCC) <- as.character(Zeisel.meta[8,])
 
 # Look at sizes of cell groups 
 table(as.character(Zeisel.meta[9,]))
