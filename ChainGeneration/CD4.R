@@ -30,8 +30,7 @@ ERCC.num[,1] <- (ERCC.conc[,4]*(10^(-18)))*(6.0221417*(10^23))
 #### CD4 T cell data ####
 input.CD4 <- read.table("Data/Test_Data/CD4_NaiveActiveYoungB6.txt", sep = "\t")
 # Select naive CD4 T cells from young B6 
-input.CD4 <- input.CD4[,grepl("SS51_naive", colnames(input.CD4)) | 
-                         grepl("SS52_naive", colnames(input.CD4))]
+input.CD4 <- input.CD4[,grepl("Unstimulated", colnames(input.CD4))]
 chips <- sapply(colnames(input.CD4), function(n){unlist(strsplit(n, "_"))[1]})
 
 ERCC.conc <- read.table("Data/ERCC_conc.txt", header=TRUE, sep = "\t", 

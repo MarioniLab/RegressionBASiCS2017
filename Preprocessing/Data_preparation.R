@@ -24,7 +24,7 @@ meta <- meta[meta$Individuals == "B6 young 1" |
                meta$Individuals == "B6 young 2",] 
 
 # Rename columns
-colnames(input) <- paste(meta$Individuals, meta$Stimulus, rownames(meta), sep = " ")
+colnames(input.CD4) <- paste(meta$Individuals, meta$Stimulus, rownames(meta), sep = " ")
 
 # Filtering of bological and technical genes
 g.bio <- input.CD4[grepl("ENS", rownames(input.CD4)),]

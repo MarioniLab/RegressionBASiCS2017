@@ -104,7 +104,7 @@ SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
 #### Create Data objects for each condition
 
 # Young naive B6
-cur_in <- input[,grepl("SS51_naive", colnames(input)) | grepl("SS52_naive", colnames(input))]
+cur_in <- input[,grepl("Unstimulated", colnames(input))]
 cur_chips <- sapply(colnames(cur_in), function(n){unlist(strsplit(n, "_"))[1]})
 
 Data.YoungNaiveB6 <- newBASiCS_Data(Counts = cur_in, 
@@ -113,7 +113,7 @@ Data.YoungNaiveB6 <- newBASiCS_Data(Counts = cur_in,
                                     BatchInfo = cur_chips)
 
 # Young active B6
-cur_in <- input[,grepl("SS51_active", colnames(input)) | grepl("SS52_active", colnames(input))]
+cur_in <- input[,grepl("Active", colnames(input))]
 cur_chips <- sapply(colnames(cur_in), function(n){unlist(strsplit(n, "_"))[1]})
 
 Data.YoungActiveB6 <- newBASiCS_Data(Counts = cur_in, 
