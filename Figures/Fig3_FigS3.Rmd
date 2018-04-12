@@ -1,0 +1,481 @@
+---
+title: "Estimation stability for model parameters."
+author: "Nils Eling"
+date: "12/04/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script recreates Figure 3 and Figure S3.
+
+Figure 3:
+CA1 pyramidal neuron cells were subsetted to 50-500 cells and the regression 
+as well as non-regression model were used to estimate parameters. 
+These parameters are stored in one .rds file where each column represents either
+mu, delta or epsilon parameters for a given sample size and iterartion 
+(see script Downsampling_regression.R and Downsampling_non-regression).
+We will firstly show the actual parameters for one subsampling experiment in
+form of boxplots.
+
+We will use the abbreviation NR for non-regression BASiCS model and R for
+regression BASiCS model.
+
+Figure S3:
+Estimated parameters were directly compared between the regression and non-regression
+model
+Parameters estimated on 939 cells is used as pseudo ground truth for comparison.
+We quantify the difference between estimates and the pseudo ground truth in form
+of log2 fNR changes (for $\delta_i$ and $\mu_i$) and absolute distances (for $\epsilon_i$)
+
+
+# Figure 3
+
+```{r}
+# Read in libraries and data
+library(cowplot)
+library(BASiCS)
+library(plyr)
+library(reshape2)
+library(statmod)
+library(RColorBrewer)
+
+# Read in the paramter estimates using the NR and R model
+Data.R <- as.data.frame(readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/Downsampling_Zeisel.rds"))
+Data.NR <- as.data.frame(readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/Downsampling_Zeisel_old.rds"))
+```
+
+```{r}
+# Offset correction between each dataset and the largest (939 cells) dataset
+Offset <- function(mu_real, mu_sim){
+  OS <- sum(mu_real)/sum(mu_sim) 
+  mu_sim = mu_sim * OS
+  return(mu_sim)
+}
+
+# Pseudo ground truth for mu
+mu_real <- Data.R$MCMC_939_1.rds_mu
+
+Data.R[,seq(1,213, 3)] <- apply(Data.R[,seq(1,213, 3)], 2, function(n){
+  Offset(mu_real, n)
+})
+Data.NR[,seq(1,142, 2)] <- apply(Data.NR[,seq(1,142, 2)], 2, function(n){
+  Offset(mu_real, n)
+})
+
+```
+
+Visualize parameters for few samples sizes for one sub-sampling experiment.
+
+## Figure 3 A
+
+```{r}
+# Split genes into lowly, medium and highly expressing for R and NR model
+df.mu.1rep <- cbind(Data.NR[,seq(1, 142, 20)], Data.R[,seq(1, 213, 30)])
+colnames(df.mu.1rep) <- c("100_NR", "150_NR", "200_NR", "250_NR", 
+                             "300_NR", "500_NR", "50_NR", "939_NR",
+                             "100_R", "150_R", "200_R", "250_R", 
+                             "300_R", "500_R", "50_R", "939_R")
+df.mu.1rep.melt <- melt(df.mu.1rep)
+
+# We split the genes at the 33% and 66% quantile
+lower <- quantile(log(mu_real), 0.33)
+higher <- quantile(log(mu_real), 0.66)
+
+df.mu.1rep.melt$ExpressionLevel <- factor(rep(ifelse(log(mu_real) < lower, "Low", 
+                                             ifelse(log(mu_real) < higher, "Medium", "High")), 
+                                      ncol(df.mu.1rep)),
+                                  levels = c("High", "Medium", "Low"))
+
+df.mu.1rep.melt$NoCells <- factor(as.numeric(sapply(as.character(df.mu.1rep.melt$variable), 
+                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                  levels = c(50, 100, 150, 200, 250, 300, 500, 939))
+df.mu.1rep.melt$Model <- factor(c(rep("Non-regression", 8*nrow(df.mu.1rep)), 
+                                  rep("Regression", 8*nrow(df.mu.1rep))),
+                                 levels = c("Non-regression", "Regression"))
+
+# Plot results for few sample sizes
+single.mu <- ggplot(df.mu.1rep.melt[df.mu.1rep.melt$NoCells %in% c(50, 150, 250, 500, 939),]) + 
+  geom_boxplot(aes(NoCells, log(value), fill=Model)) + 
+  scale_fill_manual(values = c("steelblue4", "coral3")) + ylab("log(mu)") + 
+  xlab("Number of cells") + facet_grid(ExpressionLevel~., scales = "free") + 
+  theme(strip.background = element_blank(), strip.text.y = element_text(face = "bold", size = 16))
+```
+
+## Figure 3 B
+
+```{r}
+# Split genes into lowly, medium and highly expressing for R and NR model
+df.delta.1rep <- cbind(Data.NR[,seq(2, 142, 20)], Data.R[,seq(2, 213, 30)])
+colnames(df.delta.1rep) <- c("100_NR", "150_NR", "200_NR", "250_NR", 
+                             "300_NR", "500_NR", "50_NR", "939_NR",
+                             "100_R", "150_R", "200_R", "250_R", 
+                             "300_R", "500_R", "50_R", "939_R")
+df.delta.1rep.melt <- melt(df.delta.1rep)
+
+# We split the genes at the 33% and 66% quantile
+lower <- quantile(log(mu_real), 0.33)
+higher <- quantile(log(mu_real), 0.66)
+
+df.delta.1rep.melt$ExpressionLevel <- factor(rep(ifelse(log(mu_real) < lower, "Low", 
+                                             ifelse(log(mu_real) < higher, "Medium", "High")), 
+                                      ncol(df.delta.1rep)),
+                                  levels = c("High", "Medium", "Low"))
+
+df.delta.1rep.melt$NoCells <- factor(as.numeric(sapply(as.character(df.delta.1rep.melt$variable), 
+                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                  levels = c(50, 100, 150, 200, 250, 300, 500, 939))
+df.delta.1rep.melt$Model <- factor(c(rep("Non-regression", 8*nrow(df.delta.1rep)), 
+                                  rep("Regression", 8*nrow(df.delta.1rep))),
+                                 levels = c("Non-regression", "Regression"))
+
+# Plot results
+single.delta <- ggplot(df.delta.1rep.melt[df.delta.1rep.melt$NoCells %in% c(50, 150, 250, 500, 939),]) + 
+  geom_boxplot(aes(NoCells, log(value), fill=Model)) + 
+  scale_fill_manual(values = c("steelblue4", "coral3")) + ylab("log(delta)") + 
+  xlab("Number of cells") + facet_grid(ExpressionLevel~., scales = "free") + 
+  theme(strip.background = element_blank(), strip.text.y = element_text(face = "bold", size = 16))
+```
+
+## Figure 3 C
+
+```{r}
+# Split genes into lowly, medium and highly expressing for R and NR model
+df.epsilon.1rep <- Data.R[,seq(3, 213, 30)]
+colnames(df.epsilon.1rep) <- c("100_R", "150_R", "200_R", "250_R", 
+                             "300_R", "500_R", "50_R", "939_R")
+df.epsilon.1rep.melt <- melt(df.epsilon.1rep)
+
+# We split the genes at the 33% and 66% quantile
+lower <- quantile(log(mu_real), 0.33)
+higher <- quantile(log(mu_real), 0.66)
+
+df.epsilon.1rep.melt$ExpressionLevel <- factor(rep(ifelse(log(mu_real) < lower, "Low", 
+                                             ifelse(log(mu_real) < higher, "Medium", "High")), 
+                                      ncol(df.epsilon.1rep)),
+                                  levels = c("High", "Medium", "Low"))
+
+df.epsilon.1rep.melt$NoCells <- factor(as.numeric(sapply(as.character(df.epsilon.1rep.melt$variable), 
+                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                  levels = c(50, 100, 150, 200, 250, 300, 500, 939))
+df.epsilon.1rep.melt$Model <- factor(c(rep("Regression", 8*nrow(df.epsilon.1rep))))
+
+# Plot results
+single.epsilon <- ggplot(df.epsilon.1rep.melt[df.epsilon.1rep.melt$NoCells %in% c(50, 150, 250, 500, 939),]) + 
+  geom_boxplot(aes(NoCells, value, fill=Model)) + 
+  scale_fill_manual(values = c("coral3")) + ylab("epsilon")  + xlab("Number of cells") + 
+  facet_grid(ExpressionLevel~., scales = "free") + 
+  theme(strip.background = element_blank(), strip.text.y = element_text(face = "bold", size = 16))
+```
+
+## Save Figure 3
+
+```{r}
+Fig3 <- plot_grid(single.mu, single.delta, single.epsilon, 
+                  ncol = 3, nrow = 1, align = "v", labels = "AUTO")
+
+ggsave("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig3.pdf", plot = Fig3, width = 24, height = 10)
+```
+
+# Figure S3
+
+## Figure S3A
+
+Direct comparisons between parameters estimated from the NR and R model. 
+Exemplified are sample sizes of 50, 250 and 939 cell.
+
+```{r}
+# Smallest population
+direct.delta.small <- ggplot(data.frame(dRvsdNR = log2(Data.R$MCMC_50_1.rds_delta/Data.NR$MCMC_50_1.rds_delta),
+                  Mean = log(rowMeans(matrix(c(Data.R$MCMC_50_1.rds_mu, Data.NR$MCMC_50_1.rds_mu), 
+                                             nrow = nrow(Data.R), ncol = 2,
+                                             byrow = FALSE))))) + ylim(c(-4, 8)) + xlim(c(-4, 9)) +
+  geom_hex(aes(Mean, dRvsdNR), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE)+
+  geom_abline(slope = 0, intercept = 0, colour = "dark red", lwd = 1)
+
+# intermediate population
+direct.delta.inter <- ggplot(data.frame(
+                  dRvsdNR = log2(Data.R$MCMC_250_1.rds_delta/Data.NR$MCMC_250_1.rds_delta),
+                  Mean = log(rowMeans(matrix(c(Data.R$MCMC_250_1.rds_mu, Data.NR$MCMC_250_1.rds_mu), 
+                                             nrow = nrow(Data.R), ncol = 2,
+                                             byrow = FALSE))))) + ylim(c(-4, 8)) + xlim(c(-4, 9)) +
+  geom_hex(aes(Mean, dRvsdNR), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE)+
+  geom_abline(slope = 0, intercept = 0, colour = "red")
+
+# Largest population
+direct.delta.pgt <- ggplot(data.frame(dRvsdNR = log2(Data.R$MCMC_939_1.rds_delta/Data.NR$MCMC_939_1.rds_delta),
+                  Mean = log(rowMeans(matrix(c(Data.R$MCMC_939_1.rds_mu, Data.NR$MCMC_939_1.rds_mu), 
+                                             nrow = length(Data.R$MCMC_939_1.rds_mu), ncol = 2,
+                                             byrow = FALSE))))) + ylim(c(-4, 8)) + xlim(c(-4, 9)) +
+ geom_hex(aes(Mean, dRvsdNR), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE)+
+  geom_abline(slope = 0, intercept = 0, colour = "red")
+```
+
+## Figure S3B
+
+```{r}
+# Split genes into lowly, medium and highly expressing for R and NR model
+df.mu <- matrix(data=NA, ncol = 1, nrow = 8*30*2)
+colnames(df.mu) <- c("Median")
+idx <- 1
+counter <- 1
+
+# We split the genes at the 33% and 66% quantile
+lower <- quantile(log(mu_real), 0.33)
+higher <- quantile(log(mu_real), 0.66)
+
+# We collect the median and the central 50% quantile
+for(i in seq(1,213, 3)){
+  cur_mu_R <- Data.R[,i]
+  cur_mu_NR <- Data.NR[,idx]
+  
+  df.mu[counter,1] <- median(log2(cur_mu_NR[log(mu_real) < lower] / 
+                                    mu_real[log(mu_real) < lower]))
+  
+  df.mu[counter+1,1] <- median(log2(cur_mu_NR[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      mu_real[log(mu_real) > lower & log(mu_real) < higher]))
+  
+  df.mu[counter+2,1] <- median(log2(cur_mu_NR[log(mu_real) > higher] / 
+                               mu_real[log(mu_real) > higher]))
+  
+  df.mu[counter+3,1] <- median(log2(cur_mu_R[log(mu_real) < lower] / 
+                                    mu_real[log(mu_real) < lower]))
+  
+  df.mu[counter+4,1] <- median(log2(cur_mu_R[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      mu_real[log(mu_real) > lower & log(mu_real) < higher]))
+  
+  df.mu[counter+5,1] <- median(log2(cur_mu_R[log(mu_real) > higher] / 
+                               mu_real[log(mu_real) > higher]))
+  counter <- counter+6
+  idx = idx+2
+}
+
+# Create collapsed data.frame
+df.mu.df <- as.data.frame(df.mu)
+df.mu.df$NoCells <- factor(rep(c(100, 150, 200, 250, 300, 500, 50, 939), each=60), 
+                             levels = c(50, 100, 150, 200, 250, 300, 500, 939))
+df.mu.df$Model <- factor(c(rep(c("Non-regression", "Non-regression", "Non-regression",
+                                 "Regression", "Regression", "Regression"), 80)), 
+                            levels = c("Non-regression", "Regression"))
+df.mu.df$ExpressionLevel <- factor(rep(c("Low", "Medium", "High"), 160), 
+                            levels = c("High", "Medium", "Low"))
+
+df.mu.df <- df.mu.df[which(!is.na(df.mu.df[,1])),]
+
+boxplot.mu <- ggplot(df.mu.df) + 
+  geom_point(aes(NoCells, Median, colour=Model), size=1, position=position_dodge(width = 0.5)) +
+  scale_color_manual(values = c("steelblue4", "coral3")) + ylab("log2(mu_i/mu_i,pgt)") + 
+  xlab("Number of cells") + facet_grid(ExpressionLevel~.) + geom_hline(yintercept = 0, colour = "dark red") +
+  ylim(c(-1,1)) +
+  theme(strip.background = element_blank(), strip.text.y = element_text(face = "bold", size = 16))
+```
+
+```{r}
+# Split genes into lowly, medium and highly expressing for R and NR model
+df.delta <- matrix(data=NA, ncol = 1, nrow = 8*30*2)
+colnames(df.delta) <- c("Median")
+idx <- 2
+counter <- 1
+
+# Pseudo ground truth for delta
+delta_real <- Data.R$MCMC_939_1.rds_delta
+
+# We split the genes at the 33% and 66% quantile
+lower <- quantile(log(mu_real), 0.33)
+higher <- quantile(log(mu_real), 0.66)
+
+# We collect the median and the central 50% quantile
+for(i in seq(2,213, 3)){
+  cur_delta_R <- Data.R[,i]
+  cur_delta_NR <- Data.NR[,idx]
+  
+  df.delta[counter,1] <- median(log2(cur_delta_NR[log(mu_real) < lower] / 
+                                    delta_real[log(mu_real) < lower]))
+  
+  df.delta[counter+1,1] <- median(log2(cur_delta_NR[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      delta_real[log(mu_real) > lower & log(mu_real) < higher]))
+  
+  df.delta[counter+2,1] <- median(log2(cur_delta_NR[log(mu_real) > higher] / 
+                               delta_real[log(mu_real) > higher]))
+  
+  df.delta[counter+3,1] <- median(log2(cur_delta_R[log(mu_real) < lower] / 
+                                    delta_real[log(mu_real) < lower]))
+  
+  df.delta[counter+4,1] <- median(log2(cur_delta_R[log(mu_real) > lower & log(mu_real) < higher] / 
+                                      delta_real[log(mu_real) > lower & log(mu_real) < higher]))
+  
+  df.delta[counter+5,1] <- median(log2(cur_delta_R[log(mu_real) > higher] / 
+                               delta_real[log(mu_real) > higher]))
+  counter <- counter+6
+  idx = idx+2
+}
+
+# Create collapsed data.frame
+df.delta.df <- as.data.frame(df.delta)
+df.delta.df$NoCells <- factor(rep(c(100, 150, 200, 250, 300, 500, 50, 939), each=60), 
+                             levels = c(50, 100, 150, 200, 250, 300, 500, 939))
+df.delta.df$Model <- factor(c(rep(c("Non-regression", "Non-regression", "Non-regression",
+                                 "Regression", "Regression", "Regression"), 80)), 
+                            levels = c("Non-regression", "Regression"))
+df.delta.df$ExpressionLevel <- factor(rep(c("Low", "Medium", "High"), 160), 
+                            levels = c("High", "Medium", "Low"))
+
+df.delta.df <- df.delta.df[which(!is.na(df.delta.df[,1])),]
+
+boxplot.delta <- ggplot(df.delta.df) + 
+  geom_point(aes(NoCells, Median, colour=Model), size=1, position=position_dodge(width = 0.5)) +
+  scale_color_manual(values = c("steelblue4", "coral3")) + ylab("log2(delta_i/delta_i,pgt)") + 
+  xlab("Number of cells") + facet_grid(ExpressionLevel~.) + geom_hline(yintercept = 0, colour = "dark red") +
+  ylim(c(-1,1)) +
+  theme(strip.background = element_blank(), strip.text.y = element_text(face = "bold", size = 16))
+```
+
+```{r}
+mu_real <- Data.R$MCMC_939_1.rds_mu
+epsilon_real <- Data.R$MCMC_939_1.rds_epsilon
+df.epsilon <- matrix(data=NA, ncol = 1, nrow = 8*30)
+colnames(df.epsilon) <- c("Median")
+counter <- 1
+
+# We collect the median and the central 50% quantile
+for(i in seq(3,213, 3)){
+  cur_epsilon <- Data.R[,i]
+  
+  df.epsilon[counter,1] <- median(cur_epsilon[log(mu_real) < lower] - 
+                                    epsilon_real[log(mu_real) < lower], na.rm = TRUE)
+  
+  df.epsilon[counter+1,1] <- median(cur_epsilon[log(mu_real) > lower & log(mu_real) < higher] -
+                                     epsilon_real[log(mu_real) > lower & log(mu_real) < higher], na.rm = TRUE)
+  
+  df.epsilon[counter+2,1] <- median(cur_epsilon[log(mu_real) > higher] -
+                                      epsilon_real[log(mu_real) > higher], na.rm = TRUE)
+  
+  counter <- counter+3
+}
+
+# Create collapsed data.frame
+df.epsilon.df <- as.data.frame(df.epsilon)
+df.epsilon.df$NoCells <- factor(rep(c(100, 150, 200, 250, 300, 500, 50, 939), each=30), 
+                             levels = c(50, 100, 150, 200, 250, 300, 500, 939))
+df.epsilon.df$ExpressionLevel <- factor(rep(c("Low", "Medium", "High"), 80), 
+                            levels = c("High", "Medium", "Low"))
+
+df.epsilon.df <- df.epsilon.df[which(!is.na(df.epsilon.df[,1])),]
+
+boxplot.epsilon <- ggplot(df.epsilon.df) + 
+  geom_point(aes(NoCells, Median), colour="coral3", size=1, position=position_dodge(width = 0.5)) +
+  ylab("epsilon_i - epsilon_i,pgt)") + ylim(c(-0.2, 0.2)) +
+  xlab("Number of cells") + facet_grid(ExpressionLevel~.) + geom_hline(yintercept = 0, colour = "dark red") +
+  theme(strip.background = element_blank(), strip.text.y = element_text(face = "bold", size = 16))
+```
+
+## Figure S3C-G
+
+Compare noise measures between scRNAseq and smFISH data.
+
+```{r}
+# Read in MCMC chains for Grun data
+# These were run independenyly for following conditions: SC_2i, SC_serum, RNA_2i and RNA_serum
+MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/MCMC_ps_all.rds")
+
+# smFISH data
+files <- list.files("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/smFISH_counts/", full.names = TRUE)
+file.names <- list.files("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/smFISH_counts/", full.names = FALSE)
+smFISH.counts <- lapply(files, function(n){
+  cur_file <- read.table(n, header = TRUE)
+})
+
+# Collect mean expression and CV2 measures of smFISH data in one dataframe
+df.FISH <- data.frame(genenames = sapply(sapply(file.names, function(n){unlist(strsplit(n, "_"))[4]}),
+                                    function(x){unlist(strsplit(x, "\\."))[1]}),
+                 condition = sapply(file.names, function(n){unlist(strsplit(n, "_"))[3]}),
+                 mean = unlist(lapply(smFISH.counts, function(n){mean(n[,1])})),
+                 CV2 = unlist(lapply(smFISH.counts, function(n){var(n[,1])/(mean(n[,1]))^2})))
+
+# We remove Notch1 due to strong disagreement between scRNAseq and smFISH in the serum condition.
+df.FISH <- df.FISH[df.FISH$genenames != "Notch1",]
+
+# Plot CV2 vs mean expression
+ggplot(df.FISH) + geom_point(aes(log(mean), CV2, colour = condition))
+
+# Fit reciprocal gamma model
+fit.gam <- glmgam.fit(y = df.FISH$CV2, X = matrix(1/log(df.FISH$mean), ncol = 1, nrow = 16))
+res <- df.FISH$CV2 - fit.gam$fitted.values
+
+# Perform differential testing between serum and 2i condition using scRNAseq data
+Test.SC <- BASiCS_TestDE(Chain1 = MCMCs$SC_2i, Chain2 = MCMCs$SC_serum,
+                         GroupLabel1 = "2i", GroupLabel2 = "Serum",
+                         Plot = FALSE, PlotOffset = FALSE)
+
+# Compare model parameters vs mean, CV2 and residual CV2
+genenames <- as.character(sapply(sapply(file.names, function(n){unlist(strsplit(n, "_"))[4]}),
+                                    function(x){unlist(strsplit(x, "\\."))[1]}))
+genenames <- genenames[genenames != "Notch1"]
+df.comp <- data.frame(genenames = genenames,
+                 means = rowMeans(matrix(data = df.FISH$mean, ncol = 2, nrow = 8, byrow = FALSE)),
+                 Condition = df.FISH$condition,
+                 FISHmean = df.FISH$mean,
+                 FISHCV2 = df.FISH$CV2,
+                 residual = res,
+                 mu = c(Test.SC$TableMean$Mean1[match(genenames[1:8],Test.SC$TableMean$GeneName)], 
+                        Test.SC$TableMean$Mean2[match(genenames[1:8],Test.SC$TableMean$GeneName)]),
+                 delta = c(Test.SC$TableDisp$Disp2[match(genenames[1:8],Test.SC$TableMean$GeneName)], 
+                        Test.SC$TableDisp$Disp2[match(genenames[1:8],Test.SC$TableMean$GeneName)]),
+                 eps = c(Test.SC$TableResDisp$ResDisp1[match(genenames[1:8],Test.SC$TableMean$GeneName)], 
+                        Test.SC$TableResDisp$ResDisp2[match(genenames[1:8],Test.SC$TableMean$GeneName)]))
+
+smFISH.mean <- ggplot(df.comp) + geom_point(aes(log(FISHmean), log(mu), colour = Condition), size = 3) +
+  geom_abline(slope = 1, intercept = 0, colour = "dark red", lwd = 1) + ylim(c(0, 7)) + xlim(c(0,7)) +
+  scale_colour_brewer(palette = "Set1") 
+cor.test(log(df.comp$FISHmean), log(df.comp$mu))
+
+smFISH.CV2 <- ggplot(df.comp) + geom_point(aes(log(FISHCV2), log(delta), colour = Condition), size = 3) +
+  geom_abline(slope = 1, intercept = 0, colour = "dark red", lwd = 1) + ylim(c(-3, 1)) + xlim(c(-3,1)) +
+  scale_colour_brewer(palette = "Set1") 
+cor.test(log(df.comp$FISHCV2), log(df.comp$delta))
+
+smFISH.rCV2 <- ggplot(df.comp) + geom_point(aes(res, eps, colour = Condition), size = 3) + theme_minimal() + 
+  ylim(c(-2,2)) + xlim(c(-0.5, 0.5)) + geom_abline(slope = 0, intercept = 0, colour = "dark blue", lwd = 1) +
+  scale_colour_brewer(palette = "Set1") + geom_vline(xintercept = 0, colour = "dark blue", lwd = 1)
+cor.test(df.comp$res, df.comp$eps)
+```
+
+We now compare the detection of differential variability.
+
+```{r}
+df.changes <- data.frame(genenames = df.FISH$genenames[df.FISH$condition == "J12i"],
+                         mean = rowMeans(matrix(data = df.FISH$mean, ncol = 2, nrow = 8, byrow = FALSE)),
+                         changes_CV2 = log2(df.FISH$CV2[df.FISH$condition == "J12i"]/df.FISH$CV2[df.FISH$condition == "J1S"]),
+                         DV_results = Test.SC$TableDisp$ResultDiffDisp[
+                           match(df.FISH$genenames[df.FISH$condition == "J12i"],Test.SC$TableDisp$GeneName)],
+                         rDV_results = Test.SC$TableResDisp$ResultDiffResDisp[
+                           match(df.FISH$genenames[df.FISH$condition == "J12i"],Test.SC$TableResDisp$GeneName)]) 
+
+# Plot Changes in variability vs mean expression
+FISH.DV.delta <- ggplot(df.changes, aes(log(mean), changes_CV2, label = genenames)) + 
+  geom_point() + geom_label(aes(fill = factor(DV_results)), colour = "black", fontface = "bold") +
+  scale_fill_manual(values = c("white", "red")) + ylim(c(-1.5, 1.5)) + ggtitle("DV testing using over-dispersion")
+
+FISH.DV.eps <- ggplot(df.changes, aes(log(mean), changes_CV2, label = genenames)) + 
+  geom_point() + geom_label(aes(fill = factor(rDV_results)), colour = "black", fontface = "bold") +
+  scale_fill_manual(values = c("white", "red")) + ylim(c(-1.5, 1.5)) + 
+  ggtitle("DV testing using residual over-dispersion")
+
+```
+
+## Save Figure S3
+
+```{r}
+FigS3 <- plot_grid(direct.delta.small, direct.delta.inter, direct.delta.pgt,
+                   boxplot.mu, boxplot.delta, boxplot.epsilon,
+                   smFISH.mean, smFISH.CV2, smFISH.rCV2, 
+                   FISH.DV.delta, FISH.DV.eps, NULL, 
+                   ncol = 3, nrow = 4, align = "hv", labels = "AUTO")
+
+ggsave("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS3.pdf", plot = FigS3, width = 20, height = 20)
+```
