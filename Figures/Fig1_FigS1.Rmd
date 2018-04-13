@@ -1,0 +1,291 @@
+---
+title: "Residual over-dispersion and over-dispersion estimates"
+author: "Nils Eling"
+date: "13/04/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script recreates Figure 1 and Figure S1.
+
+# Figure 1
+
+# Compare over-dispersion and residual over-dispersion parameters
+
+```{r}
+# Read in libraries
+library(BASiCS)
+library(cowplot)
+library(scran)
+library(reshape2)
+
+# Load MCMC chains from all datasets
+MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
+# Select the Dictyostelium dataset
+cur_MCMC <- MCMCs$MCMC_Dict_12_1.2_5_reg.rds
+rm(MCMCs)
+
+# Show the uncorrected over-dispersion values plotted against mean expression
+uncorrected.fit <- BASiCS_showFit(cur_MCMC) + ylim(c(-5,12)) + xlim(c(-1, 17))
+
+# Show the corrected residual over-dispersion values plotted against mean expression
+corrected.fit <- ggplot(data.frame(mu = colMedians(cur_MCMC@parameters$mu),
+                             epsilon = colMedians(cur_MCMC@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + xlim(c(-1, 17)) +
+  geom_abline(slope = 0, intercept = 0, colour="dark red")
+```
+
+# DM and epsilon values
+
+```{r}
+# Create Data object for normalization
+# Read in ERCCs 
+ERCC.conc <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
+ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
+ERCC.num[,1] <- (ERCC.conc[,4]*(10^(-18)))*(6.0221417*(10^23))
+
+# Dictyostelium data
+input.dict <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/Dictyostelium.txt", sep = "\t")
+# Select first time point
+input.dict <- input.dict[,grepl("X0h", colnames(input.dict))]
+chips <- sapply(colnames(input.dict), function(n){unlist(strsplit(n, "_"))[1]})
+
+ERCC.num.final <- ERCC.num/1000
+rownames(ERCC.num) <- rownames(ERCC.num.final) <- ERCC.conc[,2]
+
+SpikeInput <- ERCC.num.final[rownames(input.dict)[grepl("ERCC", rownames(input.dict))],1]
+SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
+                           "Molecules" = SpikeInput, stringsAsFactors = FALSE)
+
+Data.dict <- newBASiCS_Data(Counts = input.dict, 
+                            Tech = grepl("ERCC", rownames(input.dict)), 
+                            SpikeInfo = SpikeInput.1, BatchInfo = chips)
+
+# Normalization
+Norm_counts <- BASiCS_DenoisedCounts(Data = Data.dict, Chain = cur_MCMC)
+
+# Compute CV2
+CV2 <- apply(Norm_counts[!grepl("ERCC", rownames(Norm_counts)),], 1, function(n){
+  cur_var <- var(n)
+  cur_mean <- mean(n)
+  cur_var/(cur_mean^2)
+})
+
+# Compute DM
+DM <- DM(mean = rowMeans(Norm_counts[!grepl("ERCC", rownames(Norm_counts)),]), cv2 = CV2)
+
+# Plot DM - epsilons vs mean expression
+p.Eps <- ggplot(data.frame(Mean = log(colMedians(cur_MCMC@parameters$mu)),
+                           Epsilon = colMedians(cur_MCMC@parameters$epsilon),
+                           DM = DM)) + 
+  geom_point(aes(DM, Epsilon)) + ylim(c(-4,4)) + xlim(c(-1.5,1.5)) 
+cor.test(colMedians(cur_MCMC@parameters$epsilon),DM)
+ggsave("/Users/eling01/Dropbox (Personal)/BASiCSplus/Revisions/Epsilon_DM_Reviewer1.pdf",
+       p.Eps)
+rm(cur_MCMC)
+```
+
+# Final figure 1
+
+```{r}
+# Create final figure
+Fig1 <- plot_grid(NULL, NULL, uncorrected.fit, corrected.fit, ncol = 2, nrow = 2, 
+                   align = "vh", labels = "AUTO")
+# Save final figure
+ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig1.pdf", 
+       plot = Fig1, width = 8, height = 8)
+
+```
+
+# Figure S1
+
+The purpose of this analysis is to confirm that the EFDR holds for simulated data.
+Simulations were done under the NULL model (no changes in deltas) and an 
+alternative model (changes in delta for 1000 genes). We will also present the 
+FPR calculated from simulations under the Null and the TPR calculated from
+simulations under the alternative.
+
+Furthermore, we validate the variability measures with matched qPCR data.
+
+# Genrate parameters to simulate the data
+
+```{r}
+MCMC <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
+Zeisel_MCMC <- MCMC$MCMC_Zeisel_12_1.2_5_reg.rds
+rm(MCMC)
+Zeisel_data <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/microglia_Zeisel.txt")
+
+# Collect parameters
+parameters <- lapply(Zeisel_MCMC@parameters, colMedians)
+
+# Generate mean values for spike-in information
+mu_spikes <-rowMeans(Zeisel_data[grepl("ERCC", rownames(Zeisel_data)),])
+
+# Save these information
+save.image("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/DataForSimulations.RData")
+```
+
+The Simualtions are run on the cluster and scripts are available Chain generation folder.
+
+# Visualization of the EFDR, TPR and FPR
+
+## Figure S1 A-C
+
+First we look at the simulations under the Null
+
+```{r}
+# Read in data - for Simulations under the Null first
+FPR.mu <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_mu.rds")
+FPR.delta <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_delta.rds")
+FPR.eps <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_eps.rds")
+
+EFDR.mu.Null <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_mu_NULL.rds")
+EFDR.delta.Null <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_delta_NULL.rds")
+EFDR.eps.Null <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_eps_NULL.rds")
+
+df <- data.frame(Values = c(FPR.mu, EFDR.mu.Null),
+                 NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
+                                  levels = c(40, 60, 80, 100, 120, 200)),
+                 Statistic = rep(c("FPR", "EFDR"), each = 30))
+
+FPR.mu <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), size = 2) + 
+  theme_minimal(base_size = 12) + xlab("Number of cells") + 
+  scale_color_manual(values = c("#1B9E77", "#D95F02")) + 
+  geom_abline(slope = 0, intercept = 0.1) + ylim(c(0,0.2)) +
+  ggtitle("FPR and EFDR for changes in mean expression, Null model")
+
+df <- data.frame(Values = c(FPR.delta, EFDR.delta.Null),
+                 NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
+                                  levels = c(40, 60, 80, 100, 120, 200)),
+                 Statistic = rep(c("FPR", "EFDR"), each = 30))
+
+FPR.delta <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), size = 2) + 
+  theme_minimal(base_size = 12) + xlab("Number of cells") + 
+  geom_abline(slope = 0, intercept = 0.1) + 
+  ylim(c(0, 0.2)) + scale_color_manual(values = c("#1B9E77", "#D95F02")) + 
+  ggtitle("FPR and EFDR for changes in over-dispersion, Null model")
+
+df <- data.frame(Values = c(FPR.eps, EFDR.eps.Null),
+                 NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
+                                  levels = c(40, 60, 80, 100, 120, 200)),
+                 Statistic = rep(c("FPR", "EFDR"), each = 30))
+
+FPR.eps <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), size = 2) + 
+  theme_minimal(base_size = 12) + xlab("Number of cells") + 
+  geom_abline(slope = 0, intercept = 0.1) +
+  ylim(c(0, 0.2)) + scale_color_manual(values = c("#1B9E77", "#D95F02")) + 
+  ggtitle("FPR and EFDR for changes in residual over-dispersion, Null model")
+```
+
+## Figure S1 D+E
+
+Now the simulations under the alternative
+
+```{r}
+# Read in data - for Simulations under the alternative
+TPR.delta <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/TPR_delta_alternative.rds")
+TPR.eps <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/TPR_epsilon_alternative.rds")
+
+EFDR.delta.alternative <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_delta_alternative.rds")
+EFDR.eps.alternative <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_eps_alternative.rds")
+
+df <- data.frame(Values = c(TPR.delta, EFDR.delta.alternative),
+                 NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
+                                  levels = c(40, 60, 80, 100, 120, 200)),
+                 Statistic = rep(c("TPR", "EFDR"), each = 30))
+
+TPR.delta <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), size = 2) + 
+  theme_minimal(base_size = 12) + xlab("Number of cells") + 
+  ylim(c(0, 1)) + scale_color_manual(values = c("#1B9E77", "#E7298A")) + 
+  geom_abline(slope = 0, intercept = 0.1) + 
+  ggtitle("TPR and EFDR for changes in over-dispersion, alternative model")
+
+df <- data.frame(Values = c(TPR.eps, EFDR.eps.alternative),
+                 NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
+                                  levels = c(40, 60, 80, 100, 120, 200)),
+                 Statistic = rep(c("TPR", "EFDR"), each = 30))
+
+TPR.eps <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), size = 2) + 
+  theme_minimal(base_size = 12) + xlab("Number of cells") + 
+  ylim(c(0, 1)) + scale_color_manual(values = c("#1B9E77", "#E7298A")) + 
+  geom_abline(slope = 0, intercept = 0.1) + 
+  ggtitle("TPR and EFDR for changes in residual over-dispersion, alternative model")
+```
+
+## Figure S1 F
+
+We next calculate the actual FDR for epsilon and delta depending on mean expression
+
+```{r}
+# Read in MCMCs run on data simulated under the alternative
+MCMC.A <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/MCMC_A_120_1.rds")
+MCMC.B <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/MCMC_B_120_1.rds")
+
+# Read in the information on genes that changes
+changes <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/Deltas_B_120_1.rds")
+changes <- colnames(MCMC.A@parameters$delta)[changes/parameters$delta != 1]
+
+# Perform the testing
+cur_test <- BASiCS_TestDE(MCMC.A, MCMC.B, Plot = FALSE, PlotOffset = FALSE,
+                          GroupLabel1 = "A", GroupLabel2 = "B")
+
+# Detected changes in over-dispersion
+ggplot(cur_test$TableDisp[cur_test$TableDisp$ResultDiffDisp != "NoDiff" &
+                               cur_test$TableDisp$ResultDiffDisp != "ExcludedFromTesting",]) +
+  geom_point(aes(log(MeanOverall), DispLog2FC, 
+                 colour = cur_test$TableDisp$GeneName[cur_test$TableDisp$ResultDiffDisp != "NoDiff" &
+                               cur_test$TableDisp$ResultDiffDisp != "ExcludedFromTesting"] %in% changes)) + scale_color_discrete(name = "Simulated change")
+
+ggplot(cur_test$TableResDisp[cur_test$TableResDisp$ResultDiffResDisp != "NoDiff" &
+                               cur_test$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting",]) +
+  geom_point(aes(log(MeanOverall), ResDispDistance, 
+                 colour = cur_test$TableResDisp$GeneName[cur_test$TableResDisp$ResultDiffResDisp != "NoDiff"] %in% changes)) + scale_color_discrete(name = "Simulated change")
+
+FDR <- function(results, names, changes){
+  sum(results != "NoDiff" & results != "ExcludedFromTesting" & !(names %in% changes))/
+             sum(results != "NoDiff" & results != "ExcludedFromTesting")
+}
+
+mat <- matrix(data = NA, ncol = 3, nrow = 100)
+colnames(mat) <- c("Mean", "FDR_delta", "FDR_eps")
+mat[,1] <- seq(min(log(cur_test$TableDisp$MeanOverall)), 
+               max(log(cur_test$TableDisp$MeanOverall)), 
+               length.out = 100)
+
+for(i in 1:100){
+  mat[i,2] <- FDR(cur_test$TableDisp$ResultDiffDisp[log(cur_test$TableDisp$MeanOverall) > mat[i,1]],
+                  cur_test$TableDisp$GeneName[log(cur_test$TableDisp$MeanOverall) > mat[i,1]],
+                  changes[changes %in% 
+                            cur_test$TableDisp$GeneName[log(cur_test$TableDisp$MeanOverall) > mat[i,1]]])
+  mat[i,3] <- FDR(cur_test$TableResDisp$ResultDiffResDisp[log(cur_test$TableResDisp$MeanOverall) > mat[i,1]],
+                  cur_test$TableResDisp$GeneName[log(cur_test$TableResDisp$MeanOverall) > mat[i,1]],
+                  changes[changes %in% 
+                            cur_test$TableResDisp$GeneName[log(cur_test$TableResDisp$MeanOverall) > mat[i,1]]])
+}
+
+mat.melt <- melt(as.data.frame(mat), id.vars = "Mean")
+
+FDR <- ggplot(as.data.frame(mat.melt[mat.melt[,1] < 4,])) +
+  geom_smooth(aes(Mean, value, colour = variable)) +
+  scale_color_manual(values = c("dark red", "dark blue")) + 
+  xlab("Mean Expression") + ylab("FDR")
+
+```
+
+# Final figure 1
+
+```{r}
+# Create final figure
+FigS1 <- plot_grid(FPR.mu, FPR.delta, FPR.eps, 
+                   TPR.delta, TPR.eps, FDR, ncol = 3, nrow = 2, 
+                   align = "vh", labels = "AUTO")
+# Save final figure
+ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS1.pdf", 
+       plot = FigS1, width = 12, height = 8)
+
+```
