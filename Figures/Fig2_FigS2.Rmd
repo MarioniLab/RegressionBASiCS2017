@@ -1,0 +1,200 @@
+---
+title: "Testing the regression approach on different datasets"
+author: "Nils Eling"
+date: "28/11/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script reproduces Figure 2 and Figure S2
+
+# Test on a variety of datasets
+
+Here we use different (UMI and non-UMI) scRNAseq datasets to visualize and 
+assess the regression case of BASiCS.
+
+# Figure 2
+
+First we will use a dataset with many zeros: Naive CD4 T cells 
+from Martinez-Jimenez et al. and a dataset with fewer zeros: 
+Dictyostelium cells from Antolović et al.
+
+```{r}
+library(BASiCS)
+library(coda)
+library(cowplot)
+MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
+```
+
+## Figure 2 A
+
+```{r}
+#### CD4 T cells from Martinez et al. #### 
+
+# Mean vs over-dispersion plot for non-regression model
+CD4.old <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_CD4_old.rds@parameters$mu),
+                             delta = colMedians(MCMCs$MCMC_CD4_old.rds@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-2.5,10)) + xlim(c(-2.5, 13))
+
+# Mean vs over-dispersion plot for regression model
+CD4.new <- BASiCS_showFit(MCMCs$MCMC_CD4_12_1.2_5_reg.rds) + ylim(c(-2.5,10)) + xlim(c(-2.5, 13))
+
+# Mean vs residual over-dispersion plot for regression model
+CD4.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_CD4_12_1.2_5_reg.rds@parameters$mu),
+                             epsilon = colMedians(MCMCs$MCMC_CD4_12_1.2_5_reg.rds@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+
+# Mean vs dropout rate plot for regression model
+input.CD4 <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/CD4_NaiveActiveYoungB6.txt",
+                        sep="\t")
+input.CD4 <- input.CD4[!grepl("ERCC", rownames(input.CD4)),grepl("Unstimulated", colnames(input.CD4))]
+
+CD4.dropout <- ggplot(data.frame(epsilon = colMedians(MCMCs$MCMC_CD4_12_1.2_5_reg.rds@parameters$epsilon),
+                             dropout = apply(input.CD4, 1, function(n){length(which(n == 0))/length(n)}))) + 
+  geom_hex(aes(dropout, epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("Droput rate") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+```
+
+## Figure 2 B
+
+```{r}
+#### Dictyostelium cells from Antolović et al. ####
+
+# Mean vs over-dispersion plot for non-regression model
+Dict.old <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_old.rds@parameters$mu),
+                             delta = colMedians(MCMCs$MCMC_Dict_old.rds@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-5,12)) + xlim(c(-3, 17))
+
+# Mean vs over-dispersion plot for regression model
+Dict.new <- BASiCS_showFit(MCMCs$MCMC_Dict_12_1.2_5_reg.rds) + ylim(c(-5,12)) + xlim(c(-3, 17))
+
+# Mean vs residual over-dispersion plot for regression model
+Dict.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$mu),
+                             epsilon = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+
+# Mean vs dropout rate plot for regression model
+input.Dict <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/Dictyostelium.txt",
+                        sep="\t")
+input.Dict <- input.Dict[!grepl("ERCC", rownames(input.Dict)),grepl("X0h", colnames(input.Dict))]
+
+Dict.dropout <- ggplot(data.frame(epsilon = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.rds@parameters$epsilon),
+                             dropout = apply(input.Dict, 1, function(n){length(which(n == 0))/length(n)}))) + 
+  geom_hex(aes(dropout, epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("Droput rate") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+```
+
+Save final figure
+
+```{r}
+Fig2 <- plot_grid(CD4.old, CD4.new, CD4.epsilon, CD4.dropout,
+                  Dict.old, Dict.new, Dict.epsilon, Dict.dropout,
+                  nrow =4, align = "hv", labels = "AUTO")
+
+ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/FigS1.pdf", plot = final,  width = 15, height = 15, dpi=600)
+```
+
+# Figure S2
+
+We use two more dataset: Microglia cells from Zeisel et al. and 
+Pool-split RNA from Grun et al 
+
+## Figure S2 A
+
+```{r}
+#### Microglia cells from Zeisel et al. #### 
+
+# Mean vs over-dispersion plot for non-regression model
+Zeisel.old <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Zeisel_old.rds@parameters$mu),
+                             delta = colMedians(MCMCs$MCMC_Zeisel_old.rds@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-2.5,7)) + xlim(c(-2.5, 8))
+
+# Mean vs over-dispersion plot for regression model
+Zeisel.new <- BASiCS_showFit(MCMCs$MCMC_Zeisel_12_1.2_5_reg.rds) + ylim(c(-2.5,7)) + xlim(c(-2.5, 8))
+
+# Mean vs residual over-dispersion plot for regression model
+Zeisel.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Zeisel_12_1.2_5_reg.rds@parameters$mu),
+                             epsilon = colMedians(MCMCs$MCMC_Zeisel_12_1.2_5_reg.rds@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+
+# Mean vs dropout rate plot for regression model
+input.Zeisel <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/microglia_Zeisel.txt",
+                        sep="\t")
+input.Zeisel <- input.Zeisel[!grepl("ERCC", rownames(input.Zeisel)),]
+
+Zeisel.dropout <- ggplot(data.frame(epsilon = colMedians(MCMCs$MCMC_Zeisel_12_1.2_5_reg.rds@parameters$epsilon),
+                             dropout = apply(input.Zeisel, 1, function(n){length(which(n == 0))/length(n)}))) + 
+  geom_hex(aes(dropout, epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("Droput rate") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+```
+
+## Figure S2 B
+
+```{r}
+#### Pool-split RNA from Grun et al ####
+
+# Mean vs over-dispersion plot for non-regression model
+RNA.old <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_RNA_old.rds@parameters$mu),
+                             delta = colMedians(MCMCs$MCMC_RNA_old.rds@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-7,1.5)) + xlim(c(0, 10))
+
+# Mean vs over-dispersion plot for regression model
+RNA.new <- BASiCS_showFit(MCMCs$MCMC_RNA_12_1.2_5_reg.rds) + ylim(c(-7,1.5)) + xlim(c(0, 10))
+
+# Mean vs residual over-dispersion plot for regression model
+RNA.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_RNA_12_1.2_5_reg.rds@parameters$mu),
+                             epsilon = colMedians(MCMCs$MCMC_RNA_12_1.2_5_reg.rds@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+
+# Mean vs dropout rate plot for regression model
+input.RNA <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/PoolSplit.txt",
+                        sep="\t")
+input.RNA <- input.RNA[!grepl("ERCC", rownames(input.RNA)),grepl("RNA", colnames(input.RNA))]
+
+RNA.dropout <- ggplot(data.frame(epsilon = colMedians(MCMCs$MCMC_RNA_12_1.2_5_reg.rds@parameters$epsilon),
+                             dropout = apply(input.RNA, 1, function(n){length(which(n == 0))/length(n)}))) + 
+  geom_hex(aes(dropout, epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("Droput rate") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red")
+
+```
+
+Save final figure
+
+```{r}
+FigS2 <- plot_grid(Zeisel.old, Zeisel.new, Zeisel.epsilon, Zeisel.dropout, 
+                   RNA.old, RNA.new, RNA.epsilon, RNA.dropout, ncol = 4,
+                   nrow =2, align = "hv", labels = "AUTO")
+
+ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/FigS2.pdf", plot = FigS2,  width = 15, height = 7)
+```
