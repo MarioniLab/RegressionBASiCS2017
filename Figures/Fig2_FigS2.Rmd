@@ -1,7 +1,7 @@
 ---
 title: "Testing the regression approach on different datasets"
 author: "Nils Eling"
-date: "28/11/2017"
+date: "15/04/2018"
 output: html_document
 ---
 
@@ -26,7 +26,7 @@ Dictyostelium cells from Antolović et al.
 library(BASiCS)
 library(coda)
 library(cowplot)
-MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
+MCMCs <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
 ```
 
 ## Figure 2 A
@@ -53,7 +53,7 @@ CD4.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_CD4_12_1.2_5_reg.rds
   geom_abline(slope = 0, intercept = 0, col="dark red")
 
 # Mean vs dropout rate plot for regression model
-input.CD4 <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/CD4_NaiveActiveYoungB6.txt",
+input.CD4 <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/CD4_NaiveActiveYoungB6.txt",
                         sep="\t")
 input.CD4 <- input.CD4[!grepl("ERCC", rownames(input.CD4)),grepl("Unstimulated", colnames(input.CD4))]
 
@@ -89,7 +89,7 @@ Dict.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Dict_12_1.2_5_reg.r
   geom_abline(slope = 0, intercept = 0, col="dark red")
 
 # Mean vs dropout rate plot for regression model
-input.Dict <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/Dictyostelium.txt",
+input.Dict <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/Dictyostelium.txt",
                         sep="\t")
 input.Dict <- input.Dict[!grepl("ERCC", rownames(input.Dict)),grepl("X0h", colnames(input.Dict))]
 
@@ -106,9 +106,9 @@ Save final figure
 ```{r}
 Fig2 <- plot_grid(CD4.old, CD4.new, CD4.epsilon, CD4.dropout,
                   Dict.old, Dict.new, Dict.epsilon, Dict.dropout,
-                  nrow =4, align = "hv", labels = "AUTO")
+                  ncol =4, align = "hv", labels = "AUTO")
 
-ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/FigS1.pdf", plot = final,  width = 15, height = 15, dpi=600)
+ggsave(filename = "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig2.pdf", plot = Fig2,  width = 15, height = 7, dpi=600)
 ```
 
 # Figure S2
@@ -140,7 +140,7 @@ Zeisel.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_Zeisel_12_1.2_5_r
   geom_abline(slope = 0, intercept = 0, col="dark red")
 
 # Mean vs dropout rate plot for regression model
-input.Zeisel <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/microglia_Zeisel.txt",
+input.Zeisel <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/microglia_Zeisel.txt",
                         sep="\t")
 input.Zeisel <- input.Zeisel[!grepl("ERCC", rownames(input.Zeisel)),]
 
@@ -176,9 +176,9 @@ RNA.epsilon <- ggplot(data.frame(mu = colMedians(MCMCs$MCMC_RNA_12_1.2_5_reg.rds
   geom_abline(slope = 0, intercept = 0, col="dark red")
 
 # Mean vs dropout rate plot for regression model
-input.RNA <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/PoolSplit.txt",
+input.RNA <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/PoolSplit.txt",
                         sep="\t")
-input.RNA <- input.RNA[!grepl("ERCC", rownames(input.RNA)),grepl("RNA", colnames(input.RNA))]
+input.RNA <- input.RNA[!grepl("ERCC", rownames(input.RNA)),grepl("RNA2i", colnames(input.RNA))]
 
 RNA.dropout <- ggplot(data.frame(epsilon = colMedians(MCMCs$MCMC_RNA_12_1.2_5_reg.rds@parameters$epsilon),
                              dropout = apply(input.RNA, 1, function(n){length(which(n == 0))/length(n)}))) + 
@@ -196,5 +196,5 @@ FigS2 <- plot_grid(Zeisel.old, Zeisel.new, Zeisel.epsilon, Zeisel.dropout,
                    RNA.old, RNA.new, RNA.epsilon, RNA.dropout, ncol = 4,
                    nrow =2, align = "hv", labels = "AUTO")
 
-ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/FigS2.pdf", plot = FigS2,  width = 15, height = 7)
+ggsave(filename = "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS2.pdf", plot = FigS2,  width = 15, height = 7)
 ```
