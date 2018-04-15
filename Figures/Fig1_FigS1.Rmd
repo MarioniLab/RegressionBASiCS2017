@@ -23,7 +23,7 @@ library(scran)
 library(reshape2)
 
 # Load MCMC chains from all datasets
-MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
+MCMCs <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
 # Select the Dictyostelium dataset
 cur_MCMC <- MCMCs$MCMC_Dict_12_1.2_5_reg.rds
 rm(MCMCs)
@@ -45,12 +45,12 @@ corrected.fit <- ggplot(data.frame(mu = colMedians(cur_MCMC@parameters$mu),
 ```{r}
 # Create Data object for normalization
 # Read in ERCCs 
-ERCC.conc <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
+ERCC.conc <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
 ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
 ERCC.num[,1] <- (ERCC.conc[,4]*(10^(-18)))*(6.0221417*(10^23))
 
 # Dictyostelium data
-input.dict <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/Dictyostelium.txt", sep = "\t")
+input.dict <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/Dictyostelium.txt", sep = "\t")
 # Select first time point
 input.dict <- input.dict[,grepl("X0h", colnames(input.dict))]
 chips <- sapply(colnames(input.dict), function(n){unlist(strsplit(n, "_"))[1]})
@@ -85,7 +85,7 @@ p.Eps <- ggplot(data.frame(Mean = log(colMedians(cur_MCMC@parameters$mu)),
                            DM = DM)) + 
   geom_point(aes(DM, Epsilon)) + ylim(c(-4,4)) + xlim(c(-1.5,1.5)) 
 cor.test(colMedians(cur_MCMC@parameters$epsilon),DM)
-ggsave("/Users/eling01/Dropbox (Personal)/BASiCSplus/Revisions/Epsilon_DM_Reviewer1.pdf",
+ggsave("/Users/nils/Dropbox (Personal)/BASiCSplus/Revisions/Epsilon_DM_Reviewer1.pdf",
        p.Eps)
 rm(cur_MCMC)
 ```
@@ -97,7 +97,7 @@ rm(cur_MCMC)
 Fig1 <- plot_grid(NULL, NULL, uncorrected.fit, corrected.fit, ncol = 2, nrow = 2, 
                    align = "vh", labels = "AUTO")
 # Save final figure
-ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig1.pdf", 
+ggsave(filename = "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig1.pdf", 
        plot = Fig1, width = 8, height = 8)
 
 ```
@@ -115,10 +115,10 @@ Furthermore, we validate the variability measures with matched qPCR data.
 # Genrate parameters to simulate the data
 
 ```{r}
-MCMC <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
+MCMC <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/All_datasets.rds")
 Zeisel_MCMC <- MCMC$MCMC_Zeisel_12_1.2_5_reg.rds
 rm(MCMC)
-Zeisel_data <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/microglia_Zeisel.txt")
+Zeisel_data <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/microglia_Zeisel.txt")
 
 # Collect parameters
 parameters <- lapply(Zeisel_MCMC@parameters, colMedians)
@@ -127,7 +127,7 @@ parameters <- lapply(Zeisel_MCMC@parameters, colMedians)
 mu_spikes <-rowMeans(Zeisel_data[grepl("ERCC", rownames(Zeisel_data)),])
 
 # Save these information
-save.image("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/DataForSimulations.RData")
+save.image("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/DataForSimulations.RData")
 ```
 
 The Simualtions are run on the cluster and scripts are available Chain generation folder.
@@ -140,13 +140,13 @@ First we look at the simulations under the Null
 
 ```{r}
 # Read in data - for Simulations under the Null first
-FPR.mu <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_mu.rds")
-FPR.delta <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_delta.rds")
-FPR.eps <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_eps.rds")
+FPR.mu <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_mu.rds")
+FPR.delta <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_delta.rds")
+FPR.eps <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/FPR_eps.rds")
 
-EFDR.mu.Null <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_mu_NULL.rds")
-EFDR.delta.Null <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_delta_NULL.rds")
-EFDR.eps.Null <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_eps_NULL.rds")
+EFDR.mu.Null <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_mu_NULL.rds")
+EFDR.delta.Null <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_delta_NULL.rds")
+EFDR.eps.Null <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_eps_NULL.rds")
 
 df <- data.frame(Values = c(FPR.mu, EFDR.mu.Null),
                  NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
@@ -188,11 +188,11 @@ Now the simulations under the alternative
 
 ```{r}
 # Read in data - for Simulations under the alternative
-TPR.delta <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/TPR_delta_alternative.rds")
-TPR.eps <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/TPR_epsilon_alternative.rds")
+TPR.delta <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/TPR_delta_alternative.rds")
+TPR.eps <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/TPR_epsilon_alternative.rds")
 
-EFDR.delta.alternative <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_delta_alternative.rds")
-EFDR.eps.alternative <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_eps_alternative.rds")
+EFDR.delta.alternative <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_delta_alternative.rds")
+EFDR.eps.alternative <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/EFDR_eps_alternative.rds")
 
 df <- data.frame(Values = c(TPR.delta, EFDR.delta.alternative),
                  NoCells = factor(rep(c(100, 120, 200, 40, 60, 80), each = 5), 
@@ -222,10 +222,10 @@ TPR.eps <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), siz
 ```{r}
 # Create final figure
 FigS1 <- plot_grid(FPR.mu, FPR.delta, FPR.eps, 
-                   TPR.delta, TPR.eps, ncol = 3, nrow = 2, 
+                   TPR.delta, TPR.eps, NULL, ncol = 3, nrow = 2, 
                    align = "vh", labels = "AUTO")
 # Save final figure
-ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS1.pdf", 
+ggsave(filename = "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS1.pdf", 
        plot = FigS1, width = 12, height = 8)
 
 ```
