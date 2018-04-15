@@ -217,72 +217,12 @@ TPR.eps <- ggplot(df) + geom_point(aes(NoCells, Values, colour = Statistic), siz
   ggtitle("TPR and EFDR for changes in residual over-dispersion, alternative model")
 ```
 
-## Figure S1 F
-
-We next calculate the actual FDR for epsilon and delta depending on mean expression
-
-```{r}
-# Read in MCMCs run on data simulated under the alternative
-MCMC.A <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/MCMC_A_120_1.rds")
-MCMC.B <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/MCMC_B_120_1.rds")
-
-# Read in the information on genes that changes
-changes <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Simulations/Deltas_B_120_1.rds")
-changes <- colnames(MCMC.A@parameters$delta)[changes/parameters$delta != 1]
-
-# Perform the testing
-cur_test <- BASiCS_TestDE(MCMC.A, MCMC.B, Plot = FALSE, PlotOffset = FALSE,
-                          GroupLabel1 = "A", GroupLabel2 = "B")
-
-# Detected changes in over-dispersion
-ggplot(cur_test$TableDisp[cur_test$TableDisp$ResultDiffDisp != "NoDiff" &
-                               cur_test$TableDisp$ResultDiffDisp != "ExcludedFromTesting",]) +
-  geom_point(aes(log(MeanOverall), DispLog2FC, 
-                 colour = cur_test$TableDisp$GeneName[cur_test$TableDisp$ResultDiffDisp != "NoDiff" &
-                               cur_test$TableDisp$ResultDiffDisp != "ExcludedFromTesting"] %in% changes)) + scale_color_discrete(name = "Simulated change")
-
-ggplot(cur_test$TableResDisp[cur_test$TableResDisp$ResultDiffResDisp != "NoDiff" &
-                               cur_test$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting",]) +
-  geom_point(aes(log(MeanOverall), ResDispDistance, 
-                 colour = cur_test$TableResDisp$GeneName[cur_test$TableResDisp$ResultDiffResDisp != "NoDiff"] %in% changes)) + scale_color_discrete(name = "Simulated change")
-
-FDR <- function(results, names, changes){
-  sum(results != "NoDiff" & results != "ExcludedFromTesting" & !(names %in% changes))/
-             sum(results != "NoDiff" & results != "ExcludedFromTesting")
-}
-
-mat <- matrix(data = NA, ncol = 3, nrow = 100)
-colnames(mat) <- c("Mean", "FDR_delta", "FDR_eps")
-mat[,1] <- seq(min(log(cur_test$TableDisp$MeanOverall)), 
-               max(log(cur_test$TableDisp$MeanOverall)), 
-               length.out = 100)
-
-for(i in 1:100){
-  mat[i,2] <- FDR(cur_test$TableDisp$ResultDiffDisp[log(cur_test$TableDisp$MeanOverall) > mat[i,1]],
-                  cur_test$TableDisp$GeneName[log(cur_test$TableDisp$MeanOverall) > mat[i,1]],
-                  changes[changes %in% 
-                            cur_test$TableDisp$GeneName[log(cur_test$TableDisp$MeanOverall) > mat[i,1]]])
-  mat[i,3] <- FDR(cur_test$TableResDisp$ResultDiffResDisp[log(cur_test$TableResDisp$MeanOverall) > mat[i,1]],
-                  cur_test$TableResDisp$GeneName[log(cur_test$TableResDisp$MeanOverall) > mat[i,1]],
-                  changes[changes %in% 
-                            cur_test$TableResDisp$GeneName[log(cur_test$TableResDisp$MeanOverall) > mat[i,1]]])
-}
-
-mat.melt <- melt(as.data.frame(mat), id.vars = "Mean")
-
-FDR <- ggplot(as.data.frame(mat.melt[mat.melt[,1] < 4,])) +
-  geom_smooth(aes(Mean, value, colour = variable)) +
-  scale_color_manual(values = c("dark red", "dark blue")) + 
-  xlab("Mean Expression") + ylab("FDR")
-
-```
-
 # Final figure 1
 
 ```{r}
 # Create final figure
 FigS1 <- plot_grid(FPR.mu, FPR.delta, FPR.eps, 
-                   TPR.delta, TPR.eps, FDR, ncol = 3, nrow = 2, 
+                   TPR.delta, TPR.eps, ncol = 3, nrow = 2, 
                    align = "vh", labels = "AUTO")
 # Save final figure
 ggsave(filename = "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS1.pdf", 
