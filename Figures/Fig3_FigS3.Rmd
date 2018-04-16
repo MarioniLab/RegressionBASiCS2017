@@ -1,6 +1,6 @@
 ---
 title: "Estimation stability for model parameters."
-author: "Nils Eling"
+author: "Nils nils"
 date: "12/04/2018"
 output: html_document
 ---
@@ -43,8 +43,8 @@ library(statmod)
 library(RColorBrewer)
 
 # Read in the paramter estimates using the NR and R model
-Data.R <- as.data.frame(readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/Downsampling_Zeisel.rds"))
-Data.NR <- as.data.frame(readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/Downsampling_Zeisel_old.rds"))
+Data.R <- as.data.frame(readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/Downsampling_Zeisel.rds"))
+Data.NR <- as.data.frame(readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Testing/Tdist/Downsampling_Zeisel_old.rds"))
 ```
 
 ```{r}
@@ -176,7 +176,7 @@ single.epsilon <- ggplot(df.epsilon.1rep.melt[df.epsilon.1rep.melt$NoCells %in% 
 Fig3 <- plot_grid(single.mu, single.delta, single.epsilon, 
                   ncol = 3, nrow = 1, align = "v", labels = "AUTO")
 
-ggsave("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig3.pdf", plot = Fig3, width = 24, height = 10)
+ggsave("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/Fig3.pdf", plot = Fig3, width = 24, height = 10)
 ```
 
 # Figure S3
@@ -381,11 +381,11 @@ Compare noise measures between scRNAseq and smFISH data.
 ```{r}
 # Read in MCMC chains for Grun data
 # These were run independenyly for following conditions: SC_2i, SC_serum, RNA_2i and RNA_serum
-MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/MCMC_ps_all.rds")
+MCMCs <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/MCMC_ps_all.rds")
 
 # smFISH data
-files <- list.files("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/smFISH_counts/", full.names = TRUE)
-file.names <- list.files("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/smFISH_counts/", full.names = FALSE)
+files <- list.files("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/smFISH_counts/", full.names = TRUE)
+file.names <- list.files("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/qPCRvalidation/data/smFISH_counts/", full.names = FALSE)
 smFISH.counts <- lapply(files, function(n){
   cur_file <- read.table(n, header = TRUE)
 })
@@ -406,6 +406,13 @@ ggplot(df.FISH) + geom_point(aes(log(mean), CV2, colour = condition))
 # Fit reciprocal gamma model
 fit.gam <- glmgam.fit(y = df.FISH$CV2, X = matrix(1/log(df.FISH$mean), ncol = 1, nrow = 16))
 res <- df.FISH$CV2 - fit.gam$fitted.values
+
+ggplot(data.frame(mean = df.FISH$mean[order(df.FISH$mean, decreasing = FALSE)],
+                  CV2 = df.FISH$CV2[order(df.FISH$mean, decreasing = FALSE)],
+                  yhat = fit.gam$fitted.values[order(df.FISH$mean, decreasing = FALSE)],
+                  condition = df.FISH$condition[order(df.FISH$mean, decreasing = FALSE)])) +
+  geom_point(aes(log(mean), CV2, colour = condition)) + 
+  geom_line(aes(log(mean), yhat))
 
 # Perform differential testing between serum and 2i condition using scRNAseq data
 Test.SC <- BASiCS_TestDE(Chain1 = MCMCs$SC_2i, Chain2 = MCMCs$SC_serum,
@@ -445,37 +452,13 @@ smFISH.rCV2 <- ggplot(df.comp) + geom_point(aes(res, eps, colour = Condition), s
 cor.test(df.comp$res, df.comp$eps)
 ```
 
-We now compare the detection of differential variability.
-
-```{r}
-df.changes <- data.frame(genenames = df.FISH$genenames[df.FISH$condition == "J12i"],
-                         mean = rowMeans(matrix(data = df.FISH$mean, ncol = 2, nrow = 8, byrow = FALSE)),
-                         changes_CV2 = log2(df.FISH$CV2[df.FISH$condition == "J12i"]/df.FISH$CV2[df.FISH$condition == "J1S"]),
-                         DV_results = Test.SC$TableDisp$ResultDiffDisp[
-                           match(df.FISH$genenames[df.FISH$condition == "J12i"],Test.SC$TableDisp$GeneName)],
-                         rDV_results = Test.SC$TableResDisp$ResultDiffResDisp[
-                           match(df.FISH$genenames[df.FISH$condition == "J12i"],Test.SC$TableResDisp$GeneName)]) 
-
-# Plot Changes in variability vs mean expression
-FISH.DV.delta <- ggplot(df.changes, aes(log(mean), changes_CV2, label = genenames)) + 
-  geom_point() + geom_label(aes(fill = factor(DV_results)), colour = "black", fontface = "bold") +
-  scale_fill_manual(values = c("white", "red")) + ylim(c(-1.5, 1.5)) + ggtitle("DV testing using over-dispersion")
-
-FISH.DV.eps <- ggplot(df.changes, aes(log(mean), changes_CV2, label = genenames)) + 
-  geom_point() + geom_label(aes(fill = factor(rDV_results)), colour = "black", fontface = "bold") +
-  scale_fill_manual(values = c("white", "red")) + ylim(c(-1.5, 1.5)) + 
-  ggtitle("DV testing using residual over-dispersion")
-
-```
-
 ## Save Figure S3
 
 ```{r}
 FigS3 <- plot_grid(direct.delta.small, direct.delta.inter, direct.delta.pgt,
                    boxplot.mu, boxplot.delta, boxplot.epsilon,
                    smFISH.mean, smFISH.CV2, smFISH.rCV2, 
-                   FISH.DV.delta, FISH.DV.eps, NULL, 
-                   ncol = 3, nrow = 4, align = "hv", labels = "AUTO")
+                   ncol = 3, nrow = 3, align = "hv", labels = "AUTO")
 
-ggsave("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS3.pdf", plot = FigS3, width = 20, height = 20)
+ggsave("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Revisions/FigS3.pdf", plot = FigS3, width = 20, height = 20)
 ```
