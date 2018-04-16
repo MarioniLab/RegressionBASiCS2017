@@ -88,11 +88,8 @@ input <- read.table("Data/Raw_data/PoolSplit/GSE54695_data_transcript_counts.txt
 rownames(input) <- input$GENENAME
 input <- input[,-1]
 
-# Select 2i conditions
-input.2i <- input[,grepl("2i", colnames(input))]
-
 # Batch info
-Batch <- c(rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40))
+Batch <- c(rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40), rep(1, 40), rep(2, 40))
 
 # Generate raw UMI counts
 UMICount <- function(MoleculeCount, UMILength)
@@ -102,7 +99,7 @@ UMICount <- function(MoleculeCount, UMILength)
   UMICount = M*(1-exp(-MoleculeCount/M))
   return(UMICount)
 }
-CountsUMI = round(UMICount(input.2i, 4))
+CountsUMI = round(UMICount(input, 4))
 
 # Quality control - remove low Nanog cells
 Pou5f1.per.cell <- as.numeric(CountsUMI["Pou5f1",])
@@ -116,7 +113,10 @@ ERCC <- ERCC[rowMeans(ERCC) > 0,]
 Batch <- Batch[Pou5f1.per.cell >= 10]
 
 Data <- rbind(CountsUMI.bio, ERCC)
-colnames(Data) <- paste(sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[1]}), Batch, "_", sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[3]}), sep = "")
+colnames(Data) <- paste(sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[1]}),
+                        sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[2]}),
+                        Batch, "_", 
+                        sapply(colnames(Data), function(n){unlist(strsplit(n, "_"))[3]}), sep = "")
 
 write.table(Data, "Data/Test_Data/PoolSplit.txt", sep = '\t')
 
