@@ -29,7 +29,7 @@ ERCC.num[,1] <- (ERCC.conc[,4]*(10^(-18)))*(6.0221417*(10^23))
 #### Pool and split data ####
 input.ps <- read.table("Data/Test_Data/PoolSplit.txt", sep = "\t")
 # Select split condition 
-input.ps <- input.ps[,grepl("RNA", colnames(input.ps))]
+input.ps <- input.ps[,grepl("RNA2i", colnames(input.ps))]
 chips <- sapply(colnames(input.ps), function(n){unlist(strsplit(n, "_"))[1]})
 
 ERCC.conc <- read.table("Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
@@ -53,14 +53,14 @@ Data.ps <- newBASiCS_Data(Counts = input.ps,
 MCMC.ps <- BASiCS_MCMC(Data = Data.ps, N=40000, Thin = 20, Burn = 20000, 
                        Regression = TRUE, k=k, Var=Var, eta=eta)
 
-saveRDS(MCMC.ps, paste("Tdist/Results/Testing/Datasets/MCMC_RNA_", 
+saveRDS(MCMC.ps, paste("Tdist/Results/Testing/Datasets/MCMC_RNA2i_", 
                        k, "_", Var, "_", eta, "_reg.rds", sep=""))
 
 # Run the non-regression model
 MCMC.ps.old <- BASiCS_MCMC(Data = Data.ps, N=40000, Thin = 20, Burn = 20000, 
                            prior = "log-normal")
 
-saveRDS(MCMC.ps.old, paste("Tdist/Results/Testing/Datasets/MCMC_RNA_old.rds", 
+saveRDS(MCMC.ps.old, paste("Tdist/Results/Testing/Datasets/MCMC_RNA2i_old.rds", 
                            sep=""))
 
 

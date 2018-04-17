@@ -252,26 +252,78 @@ MCMC.active.new <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS
 MCMC.active.old <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_active_old.rds")
 
 # Perform testing between naive and active populations for regression and non-regression case
-Test_Regression <- BASiCS_TestDE(MCMC.naive.new, MCMC.active.new,
-                                 Plot = FALSE, PlotOffset = FALSE,
-                                 GroupLabel1 = "Naive_Regression", GroupLabel2 = "Active_Regression")
+# First exclude genes that don't show at least mu=1 in one of the conditions
+genes <- (colMedians(MCMC.naive.new@parameters$mu) > 50 |
+            colMedians(MCMC.active.new@parameters$mu) > 50) &
+  (colMedians(MCMC.naive.old@parameters$mu) > 50 |
+            colMedians(MCMC.active.old@parameters$mu) > 50)
 
-Test_NonRegression <- BASiCS_TestDE(MCMC.naive.old, MCMC.active.old,
+Test_Regression <- BASiCS_TestDE(MCMC.naive.new, MCMC.active.new, EpsilonM = 0,
                                  Plot = FALSE, PlotOffset = FALSE,
-                                 GroupLabel1 = "Naive_NonRegression", GroupLabel2 = "Active_NonRegression")
+                                 GroupLabel1 = "Naive_Regression", 
+                                 GroupLabel2 = "Active_Regression",
+                                 GenesSelect = genes)
 
-# First we compare the DV genes between regression and non-regression case using the deltas
+Test_NonRegression <- BASiCS_TestDE(MCMC.naive.old, MCMC.active.old, EpsilonM = 0,
+                                 Plot = FALSE, PlotOffset = FALSE,
+                                 GroupLabel1 = "Naive_NonRegression", 
+                                 GroupLabel2 = "Active_NonRegression",
+                                 GenesSelect = genes)
+
+# First we compare the differential mean expression test between the two models
+# Genes that are detected as differentially expressed
+NumberDE.Regression <- sum(Test_Regression$TableMean$ResultDiffMean != "NoDiff" &
+                             Test_Regression$TableMean$ResultDiffMean != "ExcludedByUser")
+NumberDE.NonRegression <- sum(Test_NonRegression$TableMean$ResultDiffMean != "NoDiff" &
+                                Test_NonRegression$TableMean$ResultDiffMean != "ExcludedByUser")
+Overlap <- length(intersect(Test_Regression$TableMean$GeneName[
+                                  Test_Regression$TableMean$ResultDiffMean != "NoDiff" &
+                                    Test_Regression$TableMean$ResultDiffMean != "ExcludedByUser"],
+                            Test_NonRegression$TableMean$GeneName[
+                                  Test_NonRegression$TableMean$ResultDiffMean != "NoDiff" &
+                                    Test_NonRegression$TableMean$ResultDiffMean != "ExcludedByUser"]
+                         ))
+draw.pairwise.venn(area1 = NumberDE.NonRegression, area2 = NumberDE.Regression, cross.area = Overlap, 
+                   category = c("Differential mean: Non Regression case", 
+                                "Differential mean: Regression case"), euler.d = TRUE, scaled = TRUE,
+                   fill = c("steelblue4", "coral3"))
+
+# Genes that are not detected as differentially expressed
+NumberDE.Regression <- sum(Test_Regression$TableMean$ResultDiffMean == "NoDiff")
+NumberDE.NonRegression <- sum(Test_NonRegression$TableMean$ResultDiffMean == "NoDiff")
+Overlap <- length(intersect(Test_Regression$TableMean$GeneName[
+                                  Test_Regression$TableMean$ResultDiffMean == "NoDiff"],
+                            Test_NonRegression$TableMean$GeneName[
+                                  Test_NonRegression$TableMean$ResultDiffMean == "NoDiff"]
+                         ))
+draw.pairwise.venn(area1 = NumberDE.NonRegression, area2 = NumberDE.Regression, cross.area = Overlap, 
+                   category = c("No differential mean: Non Regression case", 
+                                "No differential mean: Regression case"), euler.d = TRUE, scaled = TRUE,
+                   fill = c("steelblue4", "coral3"))
+
+# Figure S5A
+# Second, we compare the DV genes between regression and non-regression case using the deltas
+# Select the genes that are not differentially expressed in both comparisons
+genes <- intersect(Test_Regression$TableMean$GeneName[
+                                  Test_Regression$TableMean$ResultDiffMean == "NoDiff"],
+                            Test_NonRegression$TableMean$GeneName[
+                                  Test_NonRegression$TableMean$ResultDiffMean == "NoDiff"]
+                         )
 NumberDV.Regression <- sum(Test_Regression$TableDisp$ResultDiffDisp != "NoDiff" &
-                         Test_Regression$TableDisp$ResultDiffDisp != "ExcludedFromTesting")
+                         Test_Regression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_Regression$TableDisp$GeneName %in% genes)
 NumberDV.NonRegression <- sum(Test_NonRegression$TableDisp$ResultDiffDisp != "NoDiff" &
-                         Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting")
+                         Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression$TableDisp$GeneName %in% genes)
 Overlap <- length(intersect(Test_Regression$TableDisp$GeneName[
                                   Test_Regression$TableDisp$ResultDiffDisp != "NoDiff" &
-                                  Test_Regression$TableDisp$ResultDiffDisp != "ExcludedFromTesting"
+                                  Test_Regression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_Regression$TableDisp$GeneName %in% genes
                                   ],
                             Test_NonRegression$TableDisp$GeneName[
                                   Test_NonRegression$TableDisp$ResultDiffDisp != "NoDiff" &
-                                  Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting"
+                                  Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression$TableDisp$GeneName %in% genes
                                   ]
                          ))
 
@@ -285,22 +337,42 @@ draw.pairwise.venn(area1 = NumberDV.NonRegression, area2 = NumberDV.Regression, 
 
 # Compare differential dispersion and differential residual dispersion
 NumberDrV.Regression <- sum(Test_Regression$TableResDisp$ResultDiffResDisp != "NoDiff" &
-                         Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting")
+                         Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting" & 
+                           Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedByUser")
 NumberDV.NonRegression <- sum(Test_NonRegression$TableDisp$ResultDiffDisp != "NoDiff" &
-                         Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting")
+                         Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedByUser")
 Overlap <- length(intersect(Test_Regression$TableResDisp$GeneName[
                                   Test_Regression$TableResDisp$ResultDiffResDisp != "NoDiff" &
-                                  Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting"
+                                  Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting" & Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedByUser"
                                   ],
                             Test_NonRegression$TableDisp$GeneName[
                                   Test_NonRegression$TableDisp$ResultDiffDisp != "NoDiff" &
-                                  Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting"
+                                  Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" & Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedByUser"
                                   ]
                          ))
 
 draw.pairwise.venn(area1 = NumberDV.NonRegression, area2 = NumberDrV.Regression, cross.area = Overlap, 
                    category = c("Differential dispersion :Non Regression case", 
                                 "Differential residual dispersion: Regression case"), euler.d = TRUE, scaled = TRUE,
+                   fill = c("steelblue4", "coral3"))
+
+# Visualize the number of genes that can be tested between the two models
+NumberTested.Regression <- sum(Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting" & 
+                           Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedByUser")
+NumberTested.NonRegression <- sum(Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedByUser")
+Overlap <- length(intersect(Test_Regression$TableResDisp$GeneName[Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting" & 
+                           Test_Regression$TableResDisp$ResultDiffResDisp != "ExcludedByUser"],
+                            Test_NonRegression$TableDisp$GeneName[
+                              Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression$TableDisp$ResultDiffDisp != "ExcludedByUser"]
+                         ))
+
+draw.pairwise.venn(area1 = NumberTested.NonRegression, 
+                   area2 = NumberTested.Regression, cross.area = Overlap, 
+                   category = c("Differential dispersion testing: Non Regression case", 
+                                "Differential residual dispersion testing: Regression case"), euler.d = TRUE, scaled = TRUE,
                    fill = c("steelblue4", "coral3"))
 ```
 
