@@ -8,3 +8,7 @@ This repository contains scripts for processing raw data, quality control, runni
 * All scripts to run the model can be found in [ChainGeneration](../master/ChainGeneration).
 
 * To recreate the analysis and reproduce the figures, scripts in [Figures](../master/Figures) can be used.
+
+The preprint can be found at:
+
+[Robust expression variability testing reveals heterogeneous T cell responses](https://www.biorxiv.org/content/early/2017/12/21/237214)
