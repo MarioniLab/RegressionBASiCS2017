@@ -13,7 +13,7 @@ This script reproduces Figure 5 and Figure S5.
 
 # Figure 5
 
-This analysis uses MCMC runs on naive and activated CD4$^+$ T cells from young B6.
+This analysis uses MCMC runs on naive and activated CD4$^+$ T cells from  B6.
 Data from Martinez et al. was used to find genes that change in variability 
 during early immune activation.
 
@@ -29,6 +29,7 @@ library(pheatmap)
 library(ggplot2)
 library(viridis)
 library(VennDiagram)
+library(openxlsx)
 
 # Read in mouse genenames  
 mouse.genes <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Genenames.txt", sep = '\t', header = TRUE, 
@@ -39,12 +40,12 @@ rownames(mouse.genes) <- mouse.genes[,1]
 MCMCs <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Differential_testing/All_CD4.rds")
 
 # Exclude lowly expressed genes 
-genes <- (colMedians(MCMCs$YoungNaive@parameters$mu) > 1 &
-            colMedians(MCMCs$YoungActive@parameters$mu) > 1)
+genes <- (colMedians(MCMCs$Naive@parameters$mu) > 1 &
+            colMedians(MCMCs$Active@parameters$mu) > 1)
 
 # Perform differential testing between naive and activated CD4+ T cells
 
-Test.NaiveActive <- BASiCS_TestDE(Chain1 = MCMCs$YoungActive, Chain2 = MCMCs$YoungNaive, 
+Test.NaiveActive <- BASiCS_TestDE(Chain1 = MCMCs$Active, Chain2 = MCMCs$Naive, 
                                   EpsilonM = 1, 
                                   OffSet = TRUE, GenesSelect = genes, Plot = FALSE, 
                                   PlotOffset = FALSE)
@@ -83,6 +84,17 @@ fourGroups <- ggplot(df, aes(Log2FCmu, DistEpsilon)) + geom_point(aes(colour=Reg
   scale_colour_manual(values = c("violetred4", "violetred2", "grey90", "seagreen2", "seagreen4"))
 ```
 
+Save this gene list
+
+```{r}
+df <- df[df$Regulation != "Other",]
+df <- df[order(df$Regulation),]
+df$Genename <- mouse.genes[rownames(df),2] 
+
+write.xlsx(df, "/Users/nils/Dropbox (Personal)/BASiCSplus/Revisions/TableS2_current.xlsx",
+           row.names = TRUE)
+```
+
 But we can also look at single genes.
 
 We select a few genes to represent the regulatory mechanisms behind CD4+ T cell activation
@@ -109,20 +121,20 @@ SpikeInput.1 <- data.frame("Name" = names(SpikeInput),
 
 #### Create Data objects for each condition
 
-# Young naive B6
+#  naive B6
 cur_in <- input[,grepl("Unstimulated", colnames(input))]
 cur_chips <- sapply(colnames(cur_in), function(n){unlist(strsplit(n, "_"))[1]})
 
-Data.YoungNaiveB6 <- newBASiCS_Data(Counts = cur_in, 
+Data.NaiveB6 <- newBASiCS_Data(Counts = cur_in, 
                                     Tech = grepl("ERCC", rownames(input)), 
                                     SpikeInfo = SpikeInput.1, 
                                     BatchInfo = cur_chips)
 
-# Young active B6
+#  active B6
 cur_in <- input[,grepl("Active", colnames(input))]
 cur_chips <- sapply(colnames(cur_in), function(n){unlist(strsplit(n, "_"))[1]})
 
-Data.YoungActiveB6 <- newBASiCS_Data(Counts = cur_in, 
+Data.ActiveB6 <- newBASiCS_Data(Counts = cur_in, 
                                     Tech = grepl("ERCC", rownames(input)), 
                                     SpikeInfo = SpikeInput.1, 
                                     BatchInfo = cur_chips)
@@ -133,13 +145,13 @@ OffSet <- function(MCMC1, MCMC2){
   OS
 }
 
-OS <- OffSet(MCMCs$YoungNaive, MCMCs$YoungActive)
+OS <- OffSet(MCMCs$Naive, MCMCs$Active)
 
-MCMCs$YoungNaive@parameters$mu <- MCMCs$YoungNaive@parameters$mu / OS
-MCMCs$YoungNaive@parameters$phi <- MCMCs$YoungNaive@parameters$phi * OS
+MCMCs$Naive@parameters$mu <- MCMCs$Naive@parameters$mu / OS
+MCMCs$Naive@parameters$phi <- MCMCs$Naive@parameters$phi * OS
 
-Counts.naive <- BASiCS_DenoisedCounts(Data.YoungNaiveB6, MCMCs$YoungNaive)
-Counts.active <- BASiCS_DenoisedCounts(Data.YoungActiveB6, MCMCs$YoungActive)
+Counts.naive <- BASiCS_DenoisedCounts(Data.NaiveB6, MCMCs$Naive)
+Counts.active <- BASiCS_DenoisedCounts(Data.ActiveB6, MCMCs$Active)
 ```
 
 ## Figure 5 B
