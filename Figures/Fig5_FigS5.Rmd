@@ -87,12 +87,36 @@ fourGroups <- ggplot(df, aes(Log2FCmu, DistEpsilon)) + geom_point(aes(colour=Reg
 Save this gene list
 
 ```{r}
-df <- df[df$Regulation != "Other",]
-df <- df[order(df$Regulation),]
-df$Genename <- mouse.genes[rownames(df),2] 
+df.out <- df[df$Regulation != "Other",]
+df.out <- df.out[order(df.out$Regulation),]
+df.out$Genename <- mouse.genes[rownames(df.out),2] 
 
-write.xlsx(df, "/Users/nils/Dropbox (Personal)/BASiCSplus/Revisions/TableS2_current.xlsx",
+write.xlsx(df.out, "/Users/nils/Dropbox (Personal)/BASiCSplus/Revisions/TableS2_current.xlsx",
            row.names = TRUE)
+```
+
+GO analysis
+
+```{r}
+# Write out genes to use with DAVID
+write.table(as.data.frame(rownames(df)), "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/background.txt", sep = "\t", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+write.table(as.data.frame(rownames(df)[df$Regulation == "Up-regulated, lower variability"]),
+            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEup_DVdown.txt", sep = "\t", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+write.table(as.data.frame(rownames(df)[df$Regulation == "Up-regulated, higher variability"]),
+            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEup_DVup.txt", sep = "\t", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+write.table(as.data.frame(rownames(df)[df$Regulation == "Down-regulated, lower variability"]),
+            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEdown_DVdown.txt", sep = "\t", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+write.table(as.data.frame(rownames(df)[df$Regulation == "Down-regulated, higher variability"]),
+            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEdown_DVup.txt", sep = "\t", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
 ```
 
 But we can also look at single genes.
