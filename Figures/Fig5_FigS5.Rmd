@@ -1,6 +1,6 @@
 ---
 title: "CD4 T cell activation"
-author: "nils Eling"
+author: "eling01 Eling"
 date: "18/04/2018"
 output: html_document
 ---
@@ -32,12 +32,12 @@ library(VennDiagram)
 library(openxlsx)
 
 # Read in mouse genenames  
-mouse.genes <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Genenames.txt", sep = '\t', header = TRUE, 
+mouse.genes <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Genenames.txt", sep = '\t', header = TRUE, 
                           stringsAsFactors = FALSE)
 rownames(mouse.genes) <- mouse.genes[,1]
 
 # Load chains run on naive and activated CD4 T cells
-MCMCs <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Differential_testing/All_CD4.rds")
+MCMCs <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Results/Differential_testing/All_CD4.rds")
 
 # Exclude lowly expressed genes 
 genes <- (colMedians(MCMCs$Naive@parameters$mu) > 1 &
@@ -91,7 +91,7 @@ df.out <- df[df$Regulation != "Other",]
 df.out <- df.out[order(df.out$Regulation),]
 df.out$Genename <- mouse.genes[rownames(df.out),2] 
 
-write.xlsx(df.out, "/Users/nils/Dropbox (Personal)/BASiCSplus/Revisions/TableS2_current.xlsx",
+write.xlsx(df.out, "/Users/eling01/Dropbox (Personal)/BASiCSplus/Revisions/TableS2_current.xlsx",
            row.names = TRUE)
 ```
 
@@ -99,23 +99,23 @@ GO analysis
 
 ```{r}
 # Write out genes to use with DAVID
-write.table(as.data.frame(rownames(df)), "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/background.txt", sep = "\t", 
+write.table(as.data.frame(rownames(df)), "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/background.txt", sep = "\t", 
             row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 write.table(as.data.frame(rownames(df)[df$Regulation == "Up-regulated, lower variability"]),
-            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEup_DVdown.txt", sep = "\t", 
+            "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEup_DVdown.txt", sep = "\t", 
             row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 write.table(as.data.frame(rownames(df)[df$Regulation == "Up-regulated, higher variability"]),
-            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEup_DVup.txt", sep = "\t", 
+            "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEup_DVup.txt", sep = "\t", 
             row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 write.table(as.data.frame(rownames(df)[df$Regulation == "Down-regulated, lower variability"]),
-            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEdown_DVdown.txt", sep = "\t", 
+            "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEdown_DVdown.txt", sep = "\t", 
             row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 write.table(as.data.frame(rownames(df)[df$Regulation == "Down-regulated, higher variability"]),
-            "/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEdown_DVup.txt", sep = "\t", 
+            "/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/CD4_activation_DEdown_DVup.txt", sep = "\t", 
             row.names = FALSE, col.names = FALSE, quote = FALSE)
 ```
 
@@ -127,11 +127,11 @@ We select a few genes to represent the regulatory mechanisms behind CD4+ T cell 
 #### Read in data
 # We need to normalize data before plotting
 
-input <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/CD4_NaiveActiveYoungB6.txt", sep = "\t")
+input <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/Test_Data/CD4_NaiveActiveYoungB6.txt", sep = "\t")
 
 #### Read in Spike-ins
 
-ERCC.conc <- read.table("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
+ERCC.conc <- read.table("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Data/ERCC_conc.txt", header=TRUE, sep = "\t", fill = TRUE)
 
 ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
 ERCC.num[,1] <- (ERCC.conc[,4]*(10^(-18)))*(6.0221417*(10^23))
@@ -188,7 +188,7 @@ during immune activation.
 rownames(Counts.active) <- mouse.genes[rownames(Counts.active),2]
 rownames(Counts.naive) <- mouse.genes[rownames(Counts.naive),2]
 
-genes <- c("Polr2l", "Pes1", "Mapkapk3", "Map3k8", "Ksr1")
+genes <- c("Ncl", "Polr2l", "Cpsf2", "Sf3a3", "Plrg1")
 
 df <- data.frame(value = c(as.vector(t(Counts.active[genes,])), as.vector(t(Counts.naive[genes,]))),
                  Genes = factor(c(rep(genes, each = ncol(Counts.active)),
@@ -203,27 +203,7 @@ final.lessVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) +
   geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
   scale_fill_manual(values = c("seagreen4", "violetred4")) +
   scale_colour_manual(values = c("seagreen4", "violetred4")) + 
-  ylab("log10(Expr)") + xlab("Genes") + 
-  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
-        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
-
-genes <- c("Fasl", "Smad3",
-  "Pou2f2", "Il2", "Cd274")
-
-df <- data.frame(value = c(as.vector(t(Counts.active[genes,])), as.vector(t(Counts.naive[genes,]))),
-                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
-                                  rep(genes, each = ncol(Counts.naive))), levels = rev(genes)),
-                 Condition = factor(c(rep("Active", length(as.vector(t(Counts.active[genes,])))),
-                                      rep("Naive", length(as.vector(t(Counts.naive[genes,]))))), 
-                                    levels = c("Active", "Naive"))
-                 )
-
-final.moreVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
-  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
-  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
-  scale_fill_manual(values = c("seagreen4", "violetred4")) +
-  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
-  ylab("log10(Expr)") + xlab("Genes") + 
+  ylab("log10(Expr)") + xlab("Genes") + ylim(c(0,6)) +
   theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
         strip.background = element_blank(), strip.text.y = element_text(angle = 180))
 ```
@@ -250,7 +230,7 @@ final.moreVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) +
   geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
   scale_fill_manual(values = c("seagreen4", "violetred4")) +
   scale_colour_manual(values = c("seagreen4", "violetred4")) + 
-  ylab("log10(Expr)") + xlab("Genes") + 
+  ylab("log10(Expr)") + xlab("Genes") + ylim(c(0,6)) +
   theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
         strip.background = element_blank(), strip.text.y = element_text(angle = 180))
 ```
@@ -266,7 +246,7 @@ Fig5 <- plot_grid(fourGroups,
                              align = "h", labels=c("B", "C")), 
                    ncol = 1, nrow = 2, labels = c("A", NA))
 
-ggsave("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Fig3.pdf", plot = Fig5, width = 7, height = 10)
+ggsave("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Manuscript/Figures/Fig5.pdf", plot = Fig5, width = 7, height = 10)
 
 ```
 
@@ -281,10 +261,10 @@ Comparison of DV genes detected by regression and non-regression model
 
 # Load chains of active and naive T cells generated by regression and 
 # non-regression case
-MCMC.naive.new <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_naive_12_1.2_5_reg.rds")
-MCMC.naive.old <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_naive_old.rds")
-MCMC.active.new <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_active_12_1.2_5_reg.rds")
-MCMC.active.old <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_active_old.rds")
+MCMC.naive.new <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_naive_12_1.2_5_reg.rds")
+MCMC.naive.old <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_naive_old.rds")
+MCMC.active.new <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_active_12_1.2_5_reg.rds")
+MCMC.active.old <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Old_new_comparison_naiveactive/MCMC_CD4_active_old.rds")
 
 # Perform testing between naive and active populations for regression and non-regression case
 # First exclude genes that don't show at least mu=1 in one of the conditions
@@ -396,10 +376,10 @@ sum(Test_NonRegression.DV$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
 # Compare analysis across batches
 
 ```{r}
-MCMC.batch1.naive <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_naive_SS51.rds")
-MCMC.batch1.active <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_active_SS51.rds")
-MCMC.batch2.naive <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_naive_SS52.rds")
-MCMC.batch2.active <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_active_SS52.rds")
+MCMC.batch1.naive <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_naive_SS51.rds")
+MCMC.batch1.active <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_active_SS51.rds")
+MCMC.batch2.naive <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_naive_SS52.rds")
+MCMC.batch2.active <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Single_batches/MCMC_active_SS52.rds")
 
 genes <- (colMedians(MCMC.batch1.naive@parameters$mu) > 1 &
             colMedians(MCMC.batch1.active@parameters$mu) > 1 &
@@ -468,10 +448,10 @@ between the mixed population and the naive population.
 
 ```{r}
 # Read in data
-MCMC.naive <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/MCMC_naive.rds")
-MCMC.mixed <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/MCMC_mixed.rds")
-Data.naive <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/Data_naive.rds")
-Data.mixed <- readRDS("/Users/nils/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/Data_mixed.rds")
+MCMC.naive <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/MCMC_naive.rds")
+MCMC.mixed <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/MCMC_mixed.rds")
+Data.naive <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/Data_naive.rds")
+Data.mixed <- readRDS("/Users/eling01/Google Drive File Stream/My Drive/BASiCS_add-on/Analysis/Revisions/Mixed_Tcells/Data_mixed.rds")
 
 # Exclude lowly expressed genes
 genes <- colMedians(MCMC.naive@parameters$mu) > 1 & colMedians(MCMC.mixed@parameters$mu) > 1
