@@ -9,6 +9,6 @@ This repository contains scripts for processing raw data, quality control, runni
 
 * To recreate the analysis and reproduce the figures, scripts in [Figures](../master/Figures) can be used.
 
-The puvlication can be found at:
+The publication can be found at:
 
 [Correcting the Mean-Variance Dependency for Differential Variability Testing Using Single-Cell RNA Sequencing Data](https://www.cell.com/cell-systems/fulltext/S2405-4712(18)30278-3)
