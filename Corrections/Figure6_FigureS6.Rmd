@@ -43,13 +43,9 @@ Now, we will load the chains for CD4+ T cells from the different time-points.
 
 ```{r}
 library(BASiCS)
-MCMC_day2 <- BASiCS_LoadChain(RunName = "day2_cata_long", StoreDir = "../../MCMCs")
-MCMC_day4 <- BASiCS_LoadChain(RunName = "day4_cata_long", StoreDir = "../../MCMCs") 
-MCMC_day7 <- BASiCS_LoadChain(RunName = "day7_cata_long", StoreDir = "../../MCMCs")
-
-#MCMC_day2 <- BASiCS_LoadChain(RunName = "day2_noPG_long", StoreDir = "../../MCMCs")
-#MCMC_day4 <- BASiCS_LoadChain(RunName = "day4_noPG_long", StoreDir = "../../MCMCs") 
-#MCMC_day7 <- BASiCS_LoadChain(RunName = "day7_noPG_long", StoreDir = "../../MCMCs")
+MCMC_day2 <- BASiCS_LoadChain(RunName = "day2_long", StoreDir = "../../MCMCs")
+MCMC_day4 <- BASiCS_LoadChain(RunName = "day4_long", StoreDir = "../../MCMCs") 
+MCMC_day7 <- BASiCS_LoadChain(RunName = "day7_long", StoreDir = "../../MCMCs")
 ```
 
 # Convergence diagnostics
@@ -158,7 +154,7 @@ df <- data.frame(delta = c(Test.day2_vs_day4.logFC0$TableDisp$Disp2[
 bp.delta <- ggplot(df) + geom_boxplot(aes(Day, log(delta), fill = Day), outlier.shape = NA) +
   scale_fill_manual(values = c("#fdd49e","#ef6548" ,"#7f0000")) + theme(legend.position = 'none')
 
-ggsave("../../New_Figures_Results/Figure_6/Fig6_A_cata.pdf", height = 5, width = 7)
+ggsave("../../New_Figures_Results/Figure_6/Fig6_A.pdf", height = 5, width = 7)
 ```
 
 Figure 6B
@@ -281,7 +277,7 @@ library(cowplot)
 dist.plot <- plot_grid(plot.1, plot.2, plot.3, plot.4, ncol = 2, nrow = 2, align = 'hv')
 dist.plot
 
-ggsave("../../New_Figures_Results/Figure_6/Fig6_B_cata.pdf", height = 8, width = 8)
+ggsave("../../New_Figures_Results/Figure_6/Fig6_B.pdf", height = 8, width = 8)
 ```
 
 Figure 6C.
@@ -421,7 +417,7 @@ jitter.final <- plot_grid(jitter.Cxcr5, jitter.Tigit, jitter.Tnfsf14,
                           jitter.Ikzf4, jitter.Cd28, jitter.Jak2,
                           align = "hv", nrow = 2, ncol = 3, labels = c("C", NA, NA, "D", NA, NA))
 
-ggsave("../../New_Figures_Results/Figure_6/Fig6_CD_cata.pdf", width = 12, height = 7)
+ggsave("../../New_Figures_Results/Figure_6/Fig6_CD.pdf", width = 12, height = 7)
 ```
 
 
@@ -591,9 +587,9 @@ DE.module <- ggplot(df) + geom_point(aes(Day, Genes, colour = DE), size = 4) + c
 DV.module <- ggplot(df) + geom_point(aes(Day, Genes, colour = DV), size = 4) + coord_fixed(ratio = 1) +  
   scale_color_manual(values = c("green", "grey", "purple")) + theme(axis.text.x = element_text(angle = 90))
 
-ggsave("../../New_Figures_Results/Figure_S6/FigS6_A.DE_cata.pdf", 
+ggsave("../../New_Figures_Results/Figure_S6/FigS6_A.DE.pdf", 
        DE.module, height = 12, width = 3)
-ggsave("../../New_Figures_Results/Figure_S6/FigS6_A.DV_cata.pdf", 
+ggsave("../../New_Figures_Results/Figure_S6/FigS6_A.DV.pdf", 
        DV.module, height = 12, width = 3)
 ```
 
@@ -643,9 +639,9 @@ DE.selected <- ggplot(df) + geom_point(aes(Day, Genes, colour = DE), size = 4) +
 DV.selected <- ggplot(df) + geom_point(aes(Day, Genes, colour = DV), size = 4) + coord_fixed(ratio = 1) +  
   scale_color_manual(values = c("green", "grey", "purple")) + theme(axis.text.x = element_text(angle = 90))
 
-ggsave("../../New_Figures_Results/Figure_S6/FigS6_B.DE_cata.pdf", 
+ggsave("../../New_Figures_Results/Figure_S6/FigS6_B.DE.pdf", 
        DE.selected, height = 6, width = 3)
-ggsave("../../New_Figures_Results/Figure_S6/FigS6_B.DV_cata.pdf", 
+ggsave("../../New_Figures_Results/Figure_S6/FigS6_B.DV.pdf", 
        DV.selected, height = 6, width = 3)
 ```
 
