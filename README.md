@@ -20,4 +20,4 @@ However, when we re-analyzed these data to correct Eling et al., we noted that m
 In essence, more iterations were needed to achieve optimal good convergence. 
 Consequently, using the correct input spike-in numbers leads to changes in the set of differentially expressed and variable genes identified.
 
-The calculation of the ERCC spike-in molecules has been corrected in the [Preprocessing](../master/Preprocessing/) folder and the code to generate the corrected Figures can be found in the [Correction]((../master/Correction/) folder.
+The calculation of the ERCC spike-in molecules has been corrected in the [Preprocessing](../master/Preprocessing/) folder and the code to generate the corrected Figures can be found in the [Correction](../master/Correction/) folder.
