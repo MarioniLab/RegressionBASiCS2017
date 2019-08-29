@@ -1,0 +1,564 @@
+---
+title: "Correction for Figure 5 and Figure S5"
+author: "Nils Eling and Catalina Vallejos"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+      code_folding: hide
+      toc: true
+      toc_float: 
+        collapsed: false
+      number_sections: false 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script reproduces the analysis performed for Figure 5 and Figure S5.
+
+# Figure 5
+
+First, we will load the genenames from biomart.
+
+```{r}
+library(biomaRt)
+
+# Initialize mart
+ensembl <- useMart("ensembl")
+
+# Select dataset
+ensembl <- useDataset(dataset = "mmusculus_gene_ensembl", 
+                      mart = ensembl)
+
+# Select gene ID and gene name
+genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
+                   mart = ensembl)
+rownames(genenames) <- genenames$ensembl_gene_id
+```
+
+## Loading MCMC chains
+
+Now, we will load the chains for the naive and activated CD4+ T cells.
+
+```{r}
+library(BASiCS)
+MCMC_naive <- BASiCS_LoadChain("B6naive_cata", StoreDir = "../../MCMCs/")
+MCMC_active <- BASiCS_LoadChain("B6active_cata", StoreDir = "../../MCMCs/")
+```
+
+## Convergence diagnostics
+
+We use `BASiCS_diagPlot` in order to visualise the effective sample size (ESS)
+obtained for gene-specific expression parameters. The ESS can be used to 
+assess the mixing of the MCMC, with low ESS indicating poor mixing. 
+
+```{r Convergence}
+library(ggplot2)
+library(cowplot)
+
+p1 <- BASiCS_diagPlot(MCMC_naive)
+p2 <- BASiCS_diagPlot(MCMC_active)
+plot_grid(p1, p2)
+```
+
+The figures above suggest good mixing for most genes, although low ESS is 
+observed for lowly expressed genes (minimum observed ESS is `r min(p1$data[,2])` 
+and `r min(p2$data[,2])` within naive and active cells, respectively). 
+
+To avoid making inferences for those genes, subsequent analyses will only focus
+on those genes with ESS of at least 500. Below, we show more detailed diagnostic 
+plots for those genes with the lowest ESS within each experimental condition.
+
+```{r}
+inclgenes <- (p1$data[,2] > 500) & (p2$data[,2] > 500) 
+
+MCMC_naive_aux <- subset(MCMC_naive, 
+                         Genes = rownames(MCMC_naive)[inclgenes])
+MCMC_active_aux <- subset(MCMC_active, 
+                          Genes = rownames(MCMC_active)[inclgenes])
+
+p3 <- BASiCS_diagPlot(MCMC_naive_aux)
+p4 <- BASiCS_diagPlot(MCMC_active_aux)
+plot_grid(p3, p4)
+```
+
+After applying this inclusion criteria, `r sum(!inclgenes)` will be excluded (i.e.
+`r sum(inclgenes)` will be considered within the differential test). 
+
+To further assess the behaviour of the MCMc, we next provide more detailed 
+diagnostic criteria for those genes with the lowest ESS within each group.
+
+```{r, fig.width=10, fig.height=5}
+plot(MCMC_naive_aux, Param = "mu", Gene = which(p3$data[,2] == min(p3$data[,2])))
+plot(MCMC_active_aux, Param = "mu", Gene = which(p4$data[,2] == min(p4$data[,2])))
+```
+
+## Differential expression analysis
+
+Subsequently, we apply the differential expression test. 
+
+```{r}
+# Perform differential testing between naive and activated CD4+ T cells
+Test.NaiveActive <- BASiCS_TestDE(Chain1 = MCMC_active, 
+                                  Chain2 = MCMC_naive, 
+                                  EpsilonM = 1, 
+                                  OffSet = TRUE, 
+                                  GenesSelect = inclgenes,
+                                  Plot = FALSE, 
+                                  PlotOffset = FALSE, 
+                                  EFDR_M = 0.1, EFDR_D = 0.1, EFDR_R = 0.1)
+
+# Exlude the lowly expressed genes
+Test.NaiveActive$TableResDisp <- Test.NaiveActive$TableResDisp[
+  Test.NaiveActive$TableResDisp$ResultDiffResDisp != "ExcludedByUser" &
+    Test.NaiveActive$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting",]
+Test.NaiveActive$TableMean <- Test.NaiveActive$TableMean[
+  match(Test.NaiveActive$TableResDisp$GeneName, Test.NaiveActive$TableMean$GeneName),]
+```
+
+Generate DE and DV plot.
+
+```{r}
+# Check that tables are in the same order
+table(Test.NaiveActive$TableMean$GeneName == Test.NaiveActive$TableResDisp$GeneName)
+# Table below extended to include probabilities
+df.DE <- data.frame(row.names = Test.NaiveActive$TableMean$GeneName,
+                 DistEpsilon = Test.NaiveActive$TableResDisp$ResDispDistance,
+                 ProbDiffEpsilon = Test.NaiveActive$TableResDisp$ProbDiffResDisp,
+                 Log2FCmu = Test.NaiveActive$TableMean$MeanLog2FC,
+                 ProbDiffMean = Test.NaiveActive$TableMean$ProbDiffMean,
+                 Regulation = paste(Test.NaiveActive$TableMean$ResultDiffMean,
+                               Test.NaiveActive$TableResDisp$ResultDiffResDisp, sep = "_"))
+df.DE$Regulation <- ifelse(df.DE$Regulation == "Group1+_Group1+", 
+                        "Up-regulated, higher variability", 
+                   ifelse(df.DE$Regulation == "Group1+_Group2+", 
+                          "Up-regulated, lower variability",
+                          ifelse(df.DE$Regulation == "Group2+_Group2+", 
+                                 "Down-regulated, lower variability",
+                                 ifelse(df.DE$Regulation == "Group2+_Group1+", 
+                                        "Down-regulated, higher variability", "Other"))))
+
+df.DE$Genename <- genenames[rownames(df.DE),"external_gene_name"]
+df.DE$GeneID <- rownames(df.DE)
+
+# Plot the figure
+fourGroups <- ggplot(df.DE, aes(Log2FCmu, DistEpsilon)) + geom_point(aes(colour=Regulation)) + 
+  xlab("Log2FC mu") + ylab("Distance epsilon") + 
+  scale_colour_manual(values = c("violetred4", "violetred2", 
+                                 "grey90", "seagreen2", "seagreen4")) 
+fourGroups
+
+ggsave(file.path("~/Dropbox (Cambridge University)/BASiCSplus/Comparisons/CellSystems/",
+                 "New_Figures_Results/Figure_5/Panel_A_cata.pdf"), 
+       fourGroups, width = 12, height = 7)
+```
+
+Save Table S2.
+
+```{r}
+df.out <- df.DE[df.DE$Regulation != "Other",]
+df.out <- df.out[order(df.out$Regulation),]
+df.out$GeneID <- NULL
+
+library(openxlsx)
+write.xlsx(df.out, 
+           file.path("~/Dropbox (Cambridge University)/BASiCSplus/Comparisons/CellSystems/",
+                     "New_tables/TableS2_cata.xlsx"),
+           row.names = TRUE)
+```
+
+Save gene names for enrichment analysis.
+
+```{r}
+# Write out genes to use with DAVID
+write.table(as.data.frame(rownames(df.DE)), 
+            "../../New_Figures_Results/Figure_5/background_cata.txt", sep = "\t", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(as.data.frame(rownames(df.DE)[df.DE$Regulation == "Up-regulated, lower variability"]),
+            "../../New_Figures_Results/Figure_5/CD4_activation_DEup_DVdown_cata.txt", 
+            sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(as.data.frame(rownames(df.DE)[df.DE$Regulation == "Up-regulated, higher variability"]),
+            "../../New_Figures_Results/Figure_5/CD4_activation_DEup_DVup_cata.txt", 
+            sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(as.data.frame(rownames(df.DE)[df.DE$Regulation == "Down-regulated, lower variability"]),
+            "../../New_Figures_Results/Figure_5/CD4_activation_DEdown_DVdown_cata.txt", 
+            sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(as.data.frame(rownames(df.DE)[df.DE$Regulation == "Down-regulated, higher variability"]),
+            "../../New_Figures_Results/Figure_5/CD4_activation_DEdown_DVup_cata.txt", 
+            sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+## Visualisation of example genes
+
+Normalize the counts.
+
+```{r}
+# Function for correcting differences in population wide RNA content
+OffSetCorrection <- function(MCMC1, MCMC2){
+  median(rowSums(MCMC1@parameters$mu)/rowSums(MCMC2@parameters$mu)) 
+}
+# Offset correction
+Offset <- OffSetCorrection(MCMC_active, MCMC_naive)
+Offset
+
+cur_active <- MCMC_active
+cur_active@parameters$mu <- MCMC_active@parameters$mu / Offset
+cur_active@parameters$phi <- MCMC_active@parameters$phi * Offset
+
+Data.NaiveB6 <- readRDS("../../Data/CD4_naive.rds")
+Data.ActiveB6 <- readRDS("../../Data/CD4_active.rds")
+Counts.naive <- BASiCS_DenoisedCounts(Data.NaiveB6, MCMC_naive)
+Counts.active <- BASiCS_DenoisedCounts(Data.ActiveB6, cur_active)
+rownames(Counts.active) <- genenames[rownames(Counts.active),2]
+rownames(Counts.naive) <- genenames[rownames(Counts.naive),2]
+```
+
+Plot boxplots
+
+Figure 5B, using the original genes
+
+```{r}
+genes <- c("Ncl", "Polr2l", "Cpsf2", "Sf3a3", "Plrg1") 
+df <- data.frame(value = c(as.vector(t(Counts.active[genes,])),
+                           as.vector(t(Counts.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
+                                  rep(genes, each = ncol(Counts.naive))), 
+                                levels = rev(genes)),
+                 Condition = factor(c(rep("Active",
+                                          length(as.vector(t(Counts.active[genes,])))),
+                                      rep("Naive", 
+                                          length(as.vector(t(Counts.naive[genes,]))))), 
+                                    levels = c("Active", "Naive")))
+final.lessVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + ylim(c(0,4)) +
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), 
+        axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+final.lessVar
+
+# Effect sizes and posterior probabilities
+df.DE[df.DE$Genename %in% genes,]
+```
+
+As it can be seen above, some genes are no longer significant for either
+the mean or the residual overdispersion test. Note that for *Ncl*, the 
+probability of differential residual over-dispersion is high
+(`r df.DE$ProbDiffEpsilon[which(df.DE$Genename == "Ncl")]`), but below the 
+probability cut-off (`r Test.NaiveActive$DiffResDispSummary$ProbThreshold`). 
+
+Replacement genes were proposed by Nils (see below). As *Polr1d* and *Naf1*
+are mentioned in the text, 
+
+```{r}
+genes <- c("Larp1", "Snrpd2", "Polr2l", "Prpf31") 
+df <- data.frame(value = c(as.vector(t(Counts.active[genes,])),
+                           as.vector(t(Counts.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
+                                  rep(genes, each = ncol(Counts.naive))), 
+                                levels = rev(genes)),
+                 Condition = factor(c(rep("Active",
+                                          length(as.vector(t(Counts.active[genes,])))),
+                                      rep("Naive", 
+                                          length(as.vector(t(Counts.naive[genes,]))))), 
+                                    levels = c("Active", "Naive")))
+final.lessVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + ylim(c(0,4)) +
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), 
+        axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+final.lessVar
+
+ggsave("../../New_Figures_Results/Figure_5/Panel_B.pdf",final.lessVar, width = 5, height = 5)
+
+# Effect sizes and posterior probabilities
+df.DE[df.DE$Genename %in% genes,]
+```
+
+Figure 5C.
+
+```{r}
+genes <- c("Smad3", "Pou2f2", "Il2", "Cd274")
+df <- data.frame(value = c(as.vector(t(Counts.active[genes,])), as.vector(t(Counts.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(Counts.active)),
+                                  rep(genes, each = ncol(Counts.naive))), 
+                                levels = rev(genes)),
+                 Condition = factor(c(rep("Active",
+                                          length(as.vector(t(Counts.active[genes,])))),
+                                      rep("Naive", 
+                                          length(as.vector(t(Counts.naive[genes,]))))), 
+                                    levels = c("Active", "Naive")))
+final.moreVar <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition)) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + ylim(c(0,4)) +
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+final.moreVar
+
+ggsave("../../New_Figures_Results/Figure_5/Panel_C.pdf",final.moreVar, width = 5, height = 5)
+
+# Effect sizes and posterior probabilities
+df.DE[df.DE$Genename %in% genes,]
+```
+
+# Figure S5
+
+## Figure S5 A+B
+
+Comparison of DV genes detected by regression and non-regression model - 
+focusing on the same genes that were included in the original analysis. 
+
+```{r}
+# Offset correction not required as applied before
+inclgenes2 <- (colMedians(MCMC_active@parameters$mu) > 1 &
+                 colMedians(MCMC_naive@parameters$mu) > 1)
+
+library(VennDiagram)
+
+# Load extra data
+# Load chains of active and naive T cells generated by regression and 
+# non-regression case
+MCMC.naive.new <- readRDS("../../MCMCs/chain_B6naive_cata.rds")
+MCMC.naive.old <- readRDS("../../MCMCs/chain_B6naive_noReg.rds")
+MCMC.active.new <- readRDS("../../MCMCs/chain_B6active_cata.rds")
+MCMC.active.old <- readRDS("../../MCMCs/chain_B6active_noReg.Rds")
+
+# Perform testing between naive and active populations for regression and non-regression case
+# First exclude genes same genes as before
+
+# Perform testing on log2 FC = 2 as in Martinez-Jimenez et al, 2017 to detect changes in mean expression
+Test_Regression.DE <- BASiCS_TestDE(MCMC.naive.new, MCMC.active.new, EpsilonM = 2,
+                                    Plot = FALSE, PlotOffset = FALSE,
+                                    GroupLabel1 = "Naive_Regression", 
+                                    GroupLabel2 = "Active_Regression",
+                                    GenesSelect = inclgenes2,
+                                    EFDR_M = 0.1, EFDR_D = 0.1, EFDR_R = 0.1)
+
+Test_NonRegression.DE <- BASiCS_TestDE(MCMC.naive.old, MCMC.active.old, EpsilonM = 2,
+                                       Plot = FALSE, PlotOffset = FALSE,
+                                       GroupLabel1 = "Naive_NonRegression", 
+                                       GroupLabel2 = "Active_NonRegression",
+                                       GenesSelect = inclgenes2,
+                                       EFDR_M = 0.1, EFDR_D = 0.1, EFDR_R = 0.1)
+
+# Perform testing on log2 FC = 0 as in Martinez-Jimenez et al, 2017 to detect changes in varaibility
+Test_Regression.DV <- BASiCS_TestDE(MCMC.naive.new, MCMC.active.new, EpsilonM = 0,
+                                    Plot = FALSE, PlotOffset = FALSE,
+                                    GroupLabel1 = "Naive_Regression", 
+                                    GroupLabel2 = "Active_Regression",
+                                    GenesSelect = inclgenes2,
+                                    EFDR_M = 0.1, EFDR_D = 0.1, EFDR_R = 0.1)
+
+Test_NonRegression.DV <- BASiCS_TestDE(MCMC.naive.old, MCMC.active.old, EpsilonM = 0,
+                                       Plot = FALSE, PlotOffset = FALSE,
+                                       GroupLabel1 = "Naive_NonRegression", 
+                                       GroupLabel2 = "Active_NonRegression",
+                                       GenesSelect = inclgenes2,
+                                       EFDR_M = 0.1, EFDR_D = 0.1, EFDR_R = 0.1)
+
+# Figure S5A
+# First we compare the differential mean expression test between the two models
+# Genes that are detected as differentially expressed
+NumberDE.Regression <- sum(Test_Regression.DE$TableMean$ResultDiffMean != "NoDiff" &
+                             Test_Regression.DE$TableMean$ResultDiffMean != "ExcludedByUser")
+NumberDE.NonRegression <- sum(Test_NonRegression.DE$TableMean$ResultDiffMean != "NoDiff" &
+                                Test_NonRegression.DE$TableMean$ResultDiffMean != "ExcludedByUser")
+Overlap <- length(intersect(Test_Regression.DE$TableMean$GeneName[
+                                  Test_Regression.DE$TableMean$ResultDiffMean != "NoDiff" &
+                                    Test_Regression.DE$TableMean$ResultDiffMean != "ExcludedByUser"],
+                            Test_NonRegression.DE$TableMean$GeneName[
+                                  Test_NonRegression.DE$TableMean$ResultDiffMean != "NoDiff" &
+                                    Test_NonRegression.DE$TableMean$ResultDiffMean != "ExcludedByUser"]
+                         ))
+pdf("../../New_Figures_Results/Figure_S5/Fig_S5A_cata.pdf", width = 7, height = 5)
+draw.pairwise.venn(area1 = NumberDE.NonRegression, area2 = NumberDE.Regression, cross.area = Overlap, 
+                   category = c("Differential mean: Non Regression case", 
+                                "Differential mean: Regression case"), euler.d = TRUE, scaled = TRUE,
+                   fill = c("steelblue4", "coral3"))
+dev.off()
+
+# Figure S5B
+# Genes that are not detected as differentially expressed
+NumberDE.Regression <- sum(Test_Regression.DV$TableMean$ResultDiffMean == "NoDiff")
+NumberDE.NonRegression <- sum(Test_NonRegression.DV$TableMean$ResultDiffMean == "NoDiff")
+Overlap <- length(intersect(Test_Regression.DV$TableMean$GeneName[
+                                  Test_Regression.DV$TableMean$ResultDiffMean == "NoDiff"],
+                            Test_NonRegression.DV$TableMean$GeneName[
+                                  Test_NonRegression.DV$TableMean$ResultDiffMean == "NoDiff"]
+                         ))
+
+pdf("../../New_Figures_Results/Figure_S5/Fig_S5ABi_cata.pdf", width = 7, height = 5)
+draw.pairwise.venn(area1 = NumberDE.NonRegression, area2 = NumberDE.Regression, cross.area = Overlap, 
+                   category = c("No differential mean: Non Regression case", 
+                                "No differential mean: Regression case"), euler.d = TRUE, scaled = TRUE,
+                   fill = c("steelblue4", "coral3"))
+dev.off()
+
+# Second, we compare the DV genes between regression and non-regression case using the deltas
+# Select the genes that are not differentially expressed in both comparisons
+genes <- intersect(Test_Regression.DV$TableMean$GeneName[
+                                  Test_Regression.DV$TableMean$ResultDiffMean == "NoDiff"],
+                            Test_NonRegression.DV$TableMean$GeneName[
+                                  Test_NonRegression.DV$TableMean$ResultDiffMean == "NoDiff"]
+                         )
+NumberDV.Regression <- sum(Test_Regression.DV$TableDisp$ResultDiffDisp != "NoDiff" &
+                         Test_Regression.DV$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_Regression.DV$TableDisp$GeneName %in% genes)
+NumberDV.NonRegression <- sum(Test_NonRegression.DV$TableDisp$ResultDiffDisp != "NoDiff" &
+                         Test_NonRegression.DV$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression.DV$TableDisp$GeneName %in% genes)
+Overlap <- length(intersect(Test_Regression.DV$TableDisp$GeneName[
+                                  Test_Regression.DV$TableDisp$ResultDiffDisp != "NoDiff" &
+                                  Test_Regression.DV$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_Regression.DV$TableDisp$GeneName %in% genes
+                                  ],
+                            Test_NonRegression.DV$TableDisp$GeneName[
+                                  Test_NonRegression.DV$TableDisp$ResultDiffDisp != "NoDiff" &
+                                  Test_NonRegression.DV$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression.DV$TableDisp$GeneName %in% genes
+                                  ]
+                         ))
+
+# Jaccard index
+Overlap/(NumberDV.Regression + NumberDV.NonRegression - Overlap)
+
+pdf("../../New_Figures_Results/Figure_S5/Fig_S5ABii_cata.pdf", width = 7, height = 5)
+draw.pairwise.venn(area1 = NumberDV.NonRegression, area2 = NumberDV.Regression, cross.area = Overlap, 
+                   category = c("Differential dispersion :Non Regression case", 
+                                "Differential dispersion: Regression case"), euler.d = TRUE, scaled = TRUE,
+                   fill = c("steelblue4", "coral3"))
+dev.off()
+
+# Number of genes that can be tested for: 1. differential residual over-dispersion
+#                                         2. differential over-dispersion
+sum(Test_Regression.DV$TableResDisp$ResultDiffResDisp != "ExcludedFromTesting" & 
+                           Test_Regression.DV$TableResDisp$ResultDiffResDisp != "ExcludedByUser")
+# 6944
+sum(Test_NonRegression.DV$TableDisp$ResultDiffDisp != "ExcludedFromTesting" &
+                           Test_NonRegression.DV$TableDisp$ResultDiffDisp != "ExcludedByUser")
+# 2758
+```
+
+## Figure S5 C+D
+
+Biological interpretation of structured variability
+
+The purpose of this analysis is to guide the biological interpretation when outlying 
+expression values are present.
+We mixed 5 activated cells into a population of naive cells and compare variability
+between the mixed population and the naive population.
+
+```{r}
+# Read in data
+MCMC.naive <- BASiCS_LoadChain("B6naive", StoreDir = "../../MCMCs/")
+MCMC.mixed <- BASiCS_LoadChain("B6mixed", StoreDir = "../../MCMCs/")
+Data.naive <- readRDS("../../Data/CD4_naive.rds")
+Data.mixed <- readRDS("../../Data/CD4_mixed.rds")
+```
+
+```{r}
+Test <- BASiCS_TestDE(MCMC.naive, MCMC.mixed, 
+                      EpsilonM = 1,
+                      Plot = FALSE, PlotOffset = FALSE,
+                      GroupLabel1 = "Naive", GroupLabel2 = "Mixed", 
+                      EFDR_M = 0.1, EFDR_D = 0.1, EFDR_R = 0.1)
+
+# Find genes more variable or more expressed in mixed condition
+genes.DV <- Test$TableResDisp$GeneName[Test$TableResDisp$ResultDiffResDisp == "Mixed+" |
+                                         Test$TableMean$ResultDiffMean == "Mixed+"]
+genenames[genes.DV,2]
+```
+
+```{r}
+# Normalize data
+# Offset correction
+OffSet <- function(MCMC1, MCMC2){
+  OS <- median(rowSums(MCMC1@parameters$mu)/rowSums(MCMC2@parameters$mu))
+  OS
+}
+
+OS <- OffSet(MCMC.mixed, MCMC.naive)
+
+MCMC.mixed@parameters$mu <- MCMC.mixed@parameters$mu / OS
+MCMC.mixed@parameters$phi <- MCMC.mixed@parameters$phi * OS
+
+norm.mixed <- BASiCS_DenoisedCounts(Data.mixed, MCMC.mixed)
+norm.naive <- BASiCS_DenoisedCounts(Data.naive, MCMC.naive)
+```
+
+In the previous version, we detected Il2 to be DE and DV.
+
+```{r, fig.height=5, fig.width=5}
+# Visualize the expression of Il2 - ENSMUSG00000027720
+genes <- c("ENSMUSG00000027720")
+
+df <- data.frame(value = c(as.vector(t(norm.mixed[genes,])), as.vector(t(norm.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(norm.mixed)),
+                                  rep(genes, each = ncol(norm.naive)))),
+                 Condition = factor(c(rep("Mixed", length(as.vector(t(norm.mixed[genes,])))),
+                                      rep("Naive", length(as.vector(t(norm.naive[genes,]))))), 
+                                    levels = c("Mixed", "Naive"))
+                 )
+final.jitter <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition), size = 2) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + 
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+final.jitter
+
+ggsave("../../New_Figures_Results/Figure_S5/Fig_S5C_Il2_cata.pdf", final.jitter, width = 7, height = 5)
+```
+
+Now, Il2 is boderline significant. 
+Alternatively, we can visualize Nfkbid
+
+```{r, fig.height=5, fig.width=5}
+# Alternatively, we can use Nfkbid - ENSMUSG00000036931
+genes <- c("ENSMUSG00000036931")
+
+df <- data.frame(value = c(as.vector(t(norm.mixed[genes,])), as.vector(t(norm.naive[genes,]))),
+                 Genes = factor(c(rep(genes, each = ncol(norm.mixed)),
+                                  rep(genes, each = ncol(norm.naive)))),
+                 Condition = factor(c(rep("Mixed", length(as.vector(t(norm.mixed[genes,])))),
+                                      rep("Naive", length(as.vector(t(norm.naive[genes,]))))), 
+                                    levels = c("Mixed", "Naive"))
+                 )
+final.jitter <- ggplot(data=df, aes(x=Genes, y=log10(value + 1))) + 
+  geom_boxplot(outlier.shape = NA, position=position_dodge(width = 0.5), width=0.5, aes(fill=Condition), alpha=0.3) + coord_flip() + 
+  geom_jitter( position=position_dodge(width = 0.5), aes(colour=Condition), size = 2) + 
+  scale_fill_manual(values = c("seagreen4", "violetred4")) +
+  scale_colour_manual(values = c("seagreen4", "violetred4")) + 
+  ylab("log10(Expr)") + xlab("Genes") + 
+  theme(axis.ticks.y = element_blank(), axis.title.y = element_blank(), axis.line.y = element_blank(),
+        strip.background = element_blank(), strip.text.y = element_text(angle = 180))
+final.jitter
+
+ggsave("../../New_Figures_Results/Figure_S5/Fig_S5C_cata.pdf", final.jitter, width = 7, height = 5)
+```
+
+```{r, fig.height=5, fig.width=10}
+# Plot heatmap of DV genes
+library(pheatmap)
+library(viridis)
+pdf("../../New_Figures_Results/Figure_S5/Fig_S5D_cata.pdf", width = 7, height = 12)
+pheatmap(log10(norm.mixed[genes.DV,] + 1), color = viridis(100),
+         border_color = NA, show_colnames = FALSE, show_rownames = FALSE, 
+         annotation_col = data.frame(row.names = colnames(norm.mixed),
+                                     activation_state = sapply(colnames(norm.mixed),
+                                      function(n){unlist(strsplit(n, "\\."))[4]})))
+dev.off()
+```

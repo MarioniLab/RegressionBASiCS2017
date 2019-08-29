@@ -1,0 +1,99 @@
+---
+title: "Figure 2"
+author: "Nils Eling"
+date: "04/08/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Figure 2
+
+Load chains.
+
+```{r}
+library(BASiCS)
+MCMC_naive <- readRDS("../../MCMCs/chain_B6naive.rds")
+MCMC_naive.noReg <- readRDS("../../MCMCs/chain_B6naive_noReg.rds")
+MCMC_Dict <- readRDS("../../MCMCs/chain_Dict.rds")
+MCMC_Dict.noReg <- readRDS("../../MCMCs/chain_Dict_noReg.rds")
+```
+
+Generate plots
+
+```{r}
+library(ggplot2)
+CD4.old <- ggplot(data.frame(mu = colMedians(MCMC_naive.noReg@parameters$mu),
+                             delta = colMedians(MCMC_naive.noReg@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + 
+  xlim(c(-4,9)) + ylim(c(-2.5, 7.5))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Ai.pdf", CD4.old, width = 7, height = 7)
+
+CD4.new <- BASiCS_showFit(MCMC_naive) + xlim(c(-4,9)) + ylim(c(-2.5, 7.5))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Aii.pdf", CD4.new, width = 7, height = 7)
+
+# Mean vs residual over-dispersion plot for regression model
+CD4.epsilon <- ggplot(data.frame(mu = colMedians(MCMC_naive@parameters$mu),
+                             epsilon = colMedians(MCMC_naive@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red") + 
+  xlim(c(-4,9)) 
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Aiii.pdf", CD4.epsilon, width = 7, height = 7)
+
+
+# Mean vs dropout rate plot for regression model
+input.CD4 <- read.table("../..//Data/CD4_NaiveActiveYoungB6.txt",
+                        sep="\t")
+input.CD4 <- input.CD4[!grepl("ERCC", rownames(input.CD4)),grepl("Unstimulated", colnames(input.CD4))]
+
+CD4.dropout <- ggplot(data.frame(epsilon = colMedians(MCMC_naive@parameters$epsilon),
+                             dropout = apply(input.CD4, 1, function(n){length(which(n == 0))/length(n)}))) + 
+  geom_hex(aes(dropout, epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("Droput rate") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red") + xlim(c(0,1))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Aiv.pdf", CD4.dropout, width = 7, height = 7)
+```
+
+Now for Dictyostelium
+
+```{r}
+Dict.old <- ggplot(data.frame(mu = colMedians(MCMC_Dict.noReg@parameters$mu),
+                             delta = colMedians(MCMC_Dict.noReg@parameters$delta))) + 
+  geom_hex(aes(log(mu), log(delta)), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("log(delta)") + theme_minimal(base_size = 15) + ylim(c(-3, 7.5)) + xlim(c(-2.5, 12))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Bi.pdf", Dict.old, width = 7, height = 7)
+
+# Mean vs over-dispersion plot for regression model
+Dict.new <- BASiCS_showFit(MCMC_Dict) + ylim(c(-3, 7.5)) + xlim(c(-2.5, 12))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Bii.pdf", Dict.new, width = 7, height = 7)
+
+# Mean vs residual over-dispersion plot for regression model
+Dict.epsilon <- ggplot(data.frame(mu = colMedians(MCMC_Dict@parameters$mu),
+                             epsilon = colMedians(MCMC_Dict@parameters$epsilon))) + 
+  geom_hex(aes(log(mu), epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("log(mu)") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red") + xlim(c(-2.5, 12))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Biii.pdf", Dict.epsilon, width = 7, height = 7)
+
+# Mean vs dropout rate plot for regression model
+input.Dict <- read.table("../..//Data/Dictyostelium.txt",
+                        sep="\t")
+input.Dict <- input.Dict[!grepl("ERCC", rownames(input.Dict)),grepl("X0h", colnames(input.Dict))]
+
+Dict.dropout <- ggplot(data.frame(epsilon = colMedians(MCMC_Dict@parameters$epsilon),
+                             dropout = apply(input.Dict, 1, function(n){length(which(n == 0))/length(n)}))) + 
+  geom_hex(aes(dropout, epsilon), bins = 100) +
+  scale_fill_gradientn("", colours = colorRampPalette(c("dark blue", "yellow", "dark red"))(100), guide=FALSE) +
+  xlab("Droput rate") + ylab("epsilon") + theme_minimal(base_size = 15) + 
+  geom_abline(slope = 0, intercept = 0, col="dark red") + xlim(c(0,1))
+ggsave("../../New_Figures_Results/Figure_2/Fig2_Biv.pdf", Dict.dropout, width = 7, height = 7)
+```
