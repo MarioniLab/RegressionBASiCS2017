@@ -50,15 +50,15 @@ saveRDS(Data.YoungNaiveB6, file.path(mypath, "/Data/CD4_naive.rds"))
 chains.path <- file.path(mypath, "/MCMCs/")
 
 # Young active B6
-#MCMC.YoungActiveB6 <- BASiCS_MCMC(Data.YoungActiveB6, 160000, 80, 80000, 
-#                                  Regression = TRUE, WithSpikes = TRUE,
-#                                  StoreChains = TRUE, RunName = "B6active_cata_long",
-#                                  StoreDir = chains.path)
+MCMC.YoungActiveB6 <- BASiCS_MCMC(Data.YoungActiveB6, 80000, 40, 40000, 
+                                  Regression = TRUE, WithSpikes = TRUE,
+                                  StoreChains = TRUE, RunName = "B6active",
+                                  StoreDir = chains.path)
 
-#MCMC.YoungActiveB6.noReg <- BASiCS_MCMC(Data.YoungActiveB6, 40000, 20, 20000, 
-#                                       Regression = FALSE, WithSpikes = TRUE, 
-#                                       StoreChains = TRUE, RunName = "B6active_noReg_cata", 
-#                                       StoreDir = chains.path)
+MCMC.YoungActiveB6.noReg <- BASiCS_MCMC(Data.YoungActiveB6, 40000, 20, 20000, 
+                                       Regression = FALSE, WithSpikes = TRUE, 
+                                       StoreChains = TRUE, RunName = "B6active_noReg", 
+                                       StoreDir = chains.path)
 
 # Young naive B6
 input.naive <- CD4.cells[,grepl("Unstimulated", colnames(CD4.cells))]
@@ -72,15 +72,15 @@ saveRDS(Data.YoungNaiveB6, file.path(mypath, "Data/CD4_naive.rds"))
 #### Run MCMC on these conditions
 
 # Young naive B6
-MCMC.YoungNaiveB6 <- BASiCS_MCMC(Data.YoungNaiveB6, 160000, 80, 80000,
+MCMC.YoungNaiveB6 <- BASiCS_MCMC(Data.YoungNaiveB6, 80000, 40, 40000,
                                  Regression = TRUE, WithSpikes = TRUE,
-                                 StoreChains = TRUE, RunName = "B6naive_cata_long",
+                                 StoreChains = TRUE, RunName = "B6naive",
                                  StoreDir = chains.path)
 
-#MCMC.YoungNaiveB6.noReg <- BASiCS_MCMC(Data.YoungNaiveB6, 40000, 20, 20000, 
-#                                 Regression = FALSE, WithSpikes = TRUE,
-#                                 StoreChains = TRUE, RunName = "B6naive_noReg_cata",
-#                                 StoreDir = chains.path)
+MCMC.YoungNaiveB6.noReg <- BASiCS_MCMC(Data.YoungNaiveB6, 40000, 20, 20000, 
+                                 Regression = FALSE, WithSpikes = TRUE,
+                                 StoreChains = TRUE, RunName = "B6naive_noReg",
+                                 StoreDir = chains.path)
 
 
 #### Mixture experiment
@@ -93,8 +93,8 @@ Data.mixture <- newBASiCS_Data(Counts = input.mixed,
                                     SpikeInfo = SpikeInput.1)
 saveRDS(Data.mixture, file.path(mypath, "/Data/CD4_mixed.rds"))
 
-MCMC.mixture <- BASiCS_MCMC(Data.mixture, 160000, 80, 80000,
+MCMC.mixture <- BASiCS_MCMC(Data.mixture, 80000, 40, 40000,
                             Regression = TRUE, WithSpikes = TRUE,
-                            StoreChains = TRUE, RunName = "B6mixed_cata_long",
+                            StoreChains = TRUE, RunName = "B6mixed",
                             StoreDir = chains.path)
 
