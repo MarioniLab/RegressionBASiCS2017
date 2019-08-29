@@ -14,12 +14,6 @@ genenames <- getBM(attributes = c("ensembl_gene_id", "external_gene_name"),
                    mart = ensembl)
 rownames(genenames) <- genenames$ensembl_gene_id
 
-# Filter out pseudogenes
-#cur_genenames <- genenames[rownames(input),]
-#input <- input[!grepl("^Gm", cur_genenames[,2]),]
-#cur_genenames <- genenames[rownames(input),]
-#input <- input[!grepl("-ps", cur_genenames[,2]),]
-
 ERCC.conc <- read.table(file.path(mypath, "Data/ERCC_malaria.txt"), header=TRUE, sep = "\t")
 
 ERCC.num <- matrix(data=NA, nrow=nrow(ERCC.conc), ncol=1)
