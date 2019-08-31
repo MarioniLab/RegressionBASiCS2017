@@ -1,3 +1,5 @@
+[[10.5281/zenodo.3382836](https://zenodo.org/badge/DOI/10.5281/zenodo.3382836.svg)](https://doi.org/10.5281/zenodo.3382836)
+
 # RegressionBASiCS2017
 
 This repository contains scripts for processing raw data, quality control, running the model and performing downstream analysis for [Eling *et al.* (2018) Correcting the Mean-Variance Dependency for Differential Variability Testing Using Single-Cell RNA Sequencing Data](https://www.cell.com/cell-systems/fulltext/S2405-4712(18)30278-3).
